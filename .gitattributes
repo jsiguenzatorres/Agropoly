@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.{ts,tsx,js,jsx,json,css,html,md,yaml,yml,sql} text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.wasm binary

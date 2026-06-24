@@ -1,0 +1,71 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem",
+               "./apps/web/src", "./apps/server/src", "./packages"],
+      "description": "Lectura y escritura del código fuente del monorepo"
+    },
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase",
+               "--access-token", "${SUPABASE_ACCESS_TOKEN}"],
+      "description": "Gestión de DB, tablas, migrations, RLS policies, Storage"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" },
+      "description": "Repositorio jsiguenzatorres/Agropoly — PRs, issues, branches"
+    },
+    "figma": {
+      "command": "npx",
+      "args": ["-y", "@figma/mcp-server"],
+      "env": { "FIGMA_API_KEY": "${FIGMA_API_KEY}" },
+      "description": "Extracción de tokens de diseño y assets de Figma"
+    },
+    "vercel": {
+      "command": "npx",
+      "args": ["-y", "@vercel/mcp-adapter"],
+      "env": { "VERCEL_TOKEN": "${VERCEL_TOKEN}" },
+      "description": "Deploy, logs, Core Web Vitals, preview environments"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"],
+      "description": "Testing E2E: ejecutar partidas completas en browser real"
+    },
+    "sentry": {
+      "command": "npx",
+      "args": ["-y", "@sentry/mcp-server"],
+      "env": { "SENTRY_AUTH_TOKEN": "${SENTRY_AUTH_TOKEN}" },
+      "description": "Errores en producción, stack traces, performance"
+    },
+    "upstash": {
+      "command": "npx",
+      "args": ["-y", "@upstash/mcp-server"],
+      "env": {
+        "UPSTASH_REDIS_REST_URL": "${UPSTASH_REDIS_REST_URL}",
+        "UPSTASH_REDIS_REST_TOKEN": "${UPSTASH_REDIS_REST_TOKEN}"
+      },
+      "description": "Cache Redis: sesiones activas, leaderboard, voice cache keys"
+    },
+    "elevenlabs": {
+      "command": "npx",
+      "args": ["-y", "@elevenlabs/mcp"],
+      "env": { "ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}" },
+      "description": "Generación, gestión y preview de voces de mascotas"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "${BRAVE_API_KEY}" },
+      "description": "Búsqueda web para datos agropecuarios actualizados de El Salvador"
+    },
+    "storybook": {
+      "command": "npx",
+      "args": ["-y", "@storybook/mcp"],
+      "description": "Crear y revisar stories de componentes React"
+    }
+  }
+}

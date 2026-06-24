@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bfa-green-700: #1B6B2F;
+    --bfa-green-500: #2E8B4A;
+    --bfa-green-300: #4CAF70;
+    --bfa-gold-500:  #F5C518;
+    --bfa-amber:     #E8A020;
+    --bfa-earth:     #7B5228;
+    --bfa-cream:     #FDF8EE;
+    --bfa-dark:      #0D2B14;
+    --bfa-deep:      #060E08;
+  }
+
+  html, body {
+    @apply bg-bfa-dark text-bfa-cream;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-bfa-green-500 hover:bg-bfa-green-700 text-bfa-cream font-body font-semibold
+           px-6 py-3 rounded-full transition-all duration-150
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply border border-bfa-green-500/40 hover:bg-bfa-green-500/10 text-bfa-green-300
+           font-body font-semibold px-6 py-3 rounded-full transition-all duration-150
+           active:scale-95;
+  }
+
+  .btn-gold {
+    @apply bg-bfa-gold-500 hover:bg-bfa-gold-700 text-bfa-dark font-body font-bold
+           px-6 py-3 rounded-full transition-all duration-150 active:scale-95;
+  }
+
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl;
+  }
+
+  .fomento {
+    font-family: 'Space Mono', monospace;
+    color: var(--bfa-gold-500);
+  }
+}
