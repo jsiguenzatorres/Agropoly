@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import type { Mesh, Group } from 'three'
+import type { Group } from 'three'
 import { BOARD_DATA } from '@agropoly/game-engine'
 import { useGameStore } from '../../store/gameStore'
 import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-positions'
@@ -63,6 +63,63 @@ function OwnerDot({ id }: { id: number }) {
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
     </mesh>
   )
+}
+
+function Buildings({ id }: { id: number }) {
+  const space = useGameStore(s => s.game?.board[id])
+  if (!space || space.type !== 'prop' || !space.buildings) return null
+  const pos  = getBoardPosition(id)
+  const side = getBoardSide(id)
+  const lvl  = space.buildings
+  const isHotel = lvl >= 5
+
+  // Place buildings along the inner edge of the tile (toward board center)
+  const inset = 0.30
+  let cx = pos[0], cz = pos[2]
+  if (side === 'bottom') cz -= inset
+  if (side === 'top')    cz += inset
+  if (side === 'left')   cx += inset
+  if (side === 'right')  cx -= inset
+
+  if (isHotel) {
+    return (
+      <group position={[cx, 0.08, cz]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.32, 0.22, 0.20]} />
+          <meshStandardMaterial color="#C0392B" roughness={0.4} metalness={0.2} />
+        </mesh>
+        {/* roof */}
+        <mesh position={[0, 0.16, 0]} rotation={[0, Math.PI / 4, 0]}>
+          <coneGeometry args={[0.20, 0.10, 4]} />
+          <meshStandardMaterial color="#8E2618" roughness={0.5} />
+        </mesh>
+      </group>
+    )
+  }
+
+  // 1-4 houses laid out along the long axis of the tile
+  const vert = side === 'left' || side === 'right'
+  const spacing = 0.16
+  const start = -((lvl - 1) * spacing) / 2
+  const houses = Array.from({ length: lvl }, (_, i) => {
+    const off = start + i * spacing
+    const hx = vert ? cx : cx + off
+    const hz = vert ? cz + off : cz
+    return (
+      <group key={i} position={[hx, 0.08, hz]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.13, 0.13, 0.13]} />
+          <meshStandardMaterial color="#4CAF70" roughness={0.5} metalness={0.1} />
+        </mesh>
+        {/* roof */}
+        <mesh position={[0, 0.10, 0]} rotation={[0, Math.PI / 4, 0]}>
+          <coneGeometry args={[0.10, 0.07, 4]} />
+          <meshStandardMaterial color="#2E5C3A" roughness={0.6} />
+        </mesh>
+      </group>
+    )
+  })
+  return <>{houses}</>
 }
 
 // ─── Token shapes per tokenId ──────────────────────────────────────────────
@@ -312,8 +369,9 @@ function Scene() {
     <>
       <Lights />
       <Board />
-      {BOARD_DATA.map(s => <BoardTile key={s.id} id={s.id} />)}
-      {BOARD_DATA.map(s => <OwnerDot  key={`d${s.id}`} id={s.id} />)}
+      {BOARD_DATA.map(s => <BoardTile  key={s.id}        id={s.id} />)}
+      {BOARD_DATA.map(s => <OwnerDot   key={`d${s.id}`}  id={s.id} />)}
+      {BOARD_DATA.map(s => <Buildings  key={`b${s.id}`}  id={s.id} />)}
       {game?.players.map((_, i) => (
         <AnimatedPlayerToken key={i} playerIndex={i} />
       ))}

@@ -3,7 +3,7 @@ import { immer } from 'zustand/middleware/immer'
 import {
   BOARD_DATA, STARTING_BALANCE, GO_AMOUNT,
   JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS,
-  calcRent, checkGroupOwnership, getNetWorth,
+  calcRent, canBuild,
   shuffle, COSECHA_DECK, RIESGO_DECK,
 } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
@@ -47,6 +47,7 @@ interface GameStore {
   payJailFine: () => void
   rollForJail: () => void
   endTurn: () => void
+  build: (spaceId: number) => void
   reset: () => void
 }
 
@@ -88,7 +89,7 @@ function nextPlayerIndex(game: GameState): number {
 }
 
 export const useGameStore = create<GameStore>()(
-  immer((set, get) => ({
+  immer((set) => ({
     game: null,
     gameId: 0,
     isMoving: false,
@@ -380,6 +381,20 @@ export const useGameStore = create<GameStore>()(
       })
     },
 
+    build(spaceId) {
+      set(s => {
+        if (!s.game) return
+        const player = s.game.players[s.game.currentPlayerIndex]
+        if (!player || player.bankrupt) return
+        const result = canBuild(spaceId, player.id, s.game.board, s.game.players)
+        if (!result.canBuild) return
+        const space = s.game.board[spaceId]
+        if (!space) return
+        player.balance -= space.hcost
+        space.buildings = (space.buildings ?? 0) + 1
+      })
+    },
+
     endTurn() {
       set(s => {
         if (!s.game) return
@@ -408,3 +423,7 @@ export const useGameStore = create<GameStore>()(
     },
   }))
 )
+
+if (import.meta.env.DEV) {
+  ;(window as unknown as { __gameStore: typeof useGameStore }).__gameStore = useGameStore
+}

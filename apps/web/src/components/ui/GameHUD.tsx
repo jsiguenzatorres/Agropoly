@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useNavigate } from 'react-router-dom'
 import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
+import { canBuild, checkGroupOwnership, HOTEL_LEVEL } from '@agropoly/game-engine'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -21,7 +22,7 @@ export function GameHUD() {
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
     drawCard, applyCard, payJailFine, rollForJail, endTurn, reset,
-    showMascot,
+    showMascot, build,
   } = useGameStore()
   const navigate = useNavigate()
 
@@ -64,7 +65,24 @@ export function GameHUD() {
       else if (pending === 'cosecha' || pending === 'riesgo') drawCard()
       else if (pending === 'apply_card') applyCard()
       else if (pending === 'jail_choice') player.jailFreeCards > 0 ? payJailFine() : rollForJail()
-      else if (pending === 'end')        endTurn()
+      else if (pending === 'end') {
+        // AI greedy build: keep reserve of 200 ƒ, build cheapest available property first
+        // Loop until no more builds possible (each build mutates state, so re-query store)
+        let safety = 20
+        while (safety-- > 0) {
+          const { game: g } = useGameStore.getState()
+          if (!g) break
+          const p = g.players[g.currentPlayerIndex]
+          if (!p) break
+          const buildable = p.properties
+            .map(id => g.board[id])
+            .filter(sp => canBuild(sp.id, p.id, g.board, g.players).canBuild)
+            .sort((a, b) => a.hcost - b.hcost)
+          if (!buildable.length || p.balance - buildable[0].hcost < 200) break
+          build(buildable[0].id)
+        }
+        endTurn()
+      }
     }, delay)
     return () => clearTimeout(t)
   }, [pending, game?.currentPlayerIndex, isMoving]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -203,11 +221,47 @@ export function GameHUD() {
               </>
             )}
 
-            {pending === 'end' && (
-              <button onClick={endTurn} className="btn-primary w-full">
-                ✓ Terminar turno
-              </button>
-            )}
+            {pending === 'end' && (() => {
+              // Propiedades del jugador donde puede construir o ya tiene buildings
+              const ownedProps = player.properties
+                .map(id => game.board[id])
+                .filter(sp => sp && sp.type === 'prop' && checkGroupOwnership(player.id, sp.group, game.board))
+                .sort((a, b) => a.group - b.group || a.id - b.id)
+
+              return (
+                <>
+                  {ownedProps.length > 0 && (
+                    <div className="glass-card p-3 w-full flex flex-col gap-2 max-h-56 overflow-y-auto">
+                      <p className="text-bfa-gold-500 font-display text-xs tracking-wider text-center">
+                        🏗️ CONSTRUIR
+                      </p>
+                      {ownedProps.map(sp => {
+                        const r = canBuild(sp.id, player.id, game.board, game.players)
+                        const lvl = sp.buildings ?? 0
+                        const icon = lvl >= HOTEL_LEVEL ? '🏨'
+                          : lvl > 0 ? '🏠'.repeat(lvl) : '·'
+                        return (
+                          <button
+                            key={sp.id}
+                            onClick={() => { sfx.buy(); build(sp.id) }}
+                            disabled={!r.canBuild}
+                            className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-bfa-gold-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs"
+                            title={r.canBuild ? `Construir por ƒ${sp.hcost}` : (r.reason ?? '')}
+                          >
+                            <span className="text-bfa-cream/80 truncate flex-1 text-left">{sp.name}</span>
+                            <span className="font-mono text-bfa-gold-500 mx-2 w-12 text-center">{icon}</span>
+                            <span className="font-mono text-bfa-cream/60">ƒ{sp.hcost}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <button onClick={endTurn} className="btn-primary w-full">
+                    ✓ Terminar turno
+                  </button>
+                </>
+              )
+            })()}
 
             {pending === 'game_over' && (
               <div className="glass-card p-4 w-full flex flex-col gap-3 text-center">
