@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tokens, type TokenId } from '../lib/design-tokens'
+import { useGameStore, type PlayerSetup } from '../store/gameStore'
 
 const TOKENS: { id: TokenId; label: string }[] = [
   { id: 'maiz',    label: 'La Mazorca' },
@@ -11,12 +12,38 @@ const TOKENS: { id: TokenId; label: string }[] = [
   { id: 'pez',     label: 'El Pez'     },
 ]
 
+const AI_NAMES = ['Don Fomento', 'Maicita', 'Don Café', 'La Canche', 'La Tormenta']
+const AI_TOKENS: TokenId[] = ['cafe', 'vaca', 'tractor', 'milpa', 'pez']
+
 export function Component() {
   const navigate = useNavigate()
-  const [name, setName] = useState('')
-  const [token, setToken] = useState<TokenId>('maiz')
-  const [players, setPlayers] = useState(3)
+  const initGame = useGameStore(s => s.initGame)
+
+  const [name, setName]       = useState('')
+  const [token, setToken]     = useState<TokenId>('maiz')
+  const [aiCount, setAiCount] = useState(2)
   const [eduMode, setEduMode] = useState(false)
+
+  const totalPlayers = 1 + aiCount
+
+  function handleStart() {
+    const humanSetup: PlayerSetup = { name: name.trim(), tokenId: token, isAI: false, difficulty: 'easy' }
+
+    const usedTokens = new Set([token])
+    const aiSetups: PlayerSetup[] = Array.from({ length: aiCount }, (_, i) => {
+      const aiToken = AI_TOKENS.find(t => !usedTokens.has(t)) ?? AI_TOKENS[i % AI_TOKENS.length]
+      usedTokens.add(aiToken)
+      return {
+        name: AI_NAMES[i] ?? `IA ${i + 1}`,
+        tokenId: aiToken,
+        isAI: true,
+        difficulty: i === 0 ? 'hard' : 'easy',
+      }
+    })
+
+    initGame([humanSetup, ...aiSetups], eduMode)
+    navigate('/game')
+  }
 
   return (
     <div className="min-h-screen bg-bfa-dark flex flex-col items-center justify-center p-6">
@@ -57,17 +84,17 @@ export function Component() {
           </div>
         </div>
 
-        {/* Jugadores */}
+        {/* Jugadores IA */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-mono tracking-widest text-bfa-cream/50 uppercase">
-            Jugadores IA: {players - 1}
+            Jugadores IA: {aiCount}
           </label>
           <input
-            type="range" min={2} max={6} value={players}
-            onChange={e => setPlayers(Number(e.target.value))}
+            type="range" min={1} max={5} value={aiCount}
+            onChange={e => setAiCount(Number(e.target.value))}
             className="accent-bfa-green-500"
           />
-          <p className="text-xs text-bfa-cream/30">{players} jugadores en total (1 humano + {players - 1} IA)</p>
+          <p className="text-xs text-bfa-cream/30">{totalPlayers} jugadores en total (1 humano + {aiCount} IA)</p>
         </div>
 
         {/* Modo educativo */}
@@ -84,7 +111,7 @@ export function Component() {
         <button
           className="btn-gold mt-2"
           disabled={!name.trim()}
-          onClick={() => navigate('/game')}
+          onClick={handleStart}
         >
           Iniciar Partida ƒ1,500
         </button>
