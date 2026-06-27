@@ -7,6 +7,7 @@ import {
   shuffle, COSECHA_DECK, RIESGO_DECK,
 } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
+import type { MascotLine } from '../lib/mascot-dialogues'
 
 export type PendingAction =
   | 'roll' | 'buy' | 'pay_rent' | 'pay_tax'
@@ -28,6 +29,11 @@ interface GameStore {
   lastDice: { d1: number; d2: number; doubles: boolean } | null
   pendingCard: Card | null
   pendingAmount: number
+
+  mascot: MascotLine | null
+  mascotSeq: number       // monotonically increasing; triggers MascotOverlay effect even for same text
+  showMascot: (line: MascotLine) => void
+  dismissMascot: () => void
 
   setMoving: (v: boolean) => void
   initGame: (setups: PlayerSetup[], eduMode: boolean) => void
@@ -86,10 +92,15 @@ export const useGameStore = create<GameStore>()(
     game: null,
     gameId: 0,
     isMoving: false,
+    mascot: null,
+    mascotSeq: 0,
     pending: 'roll',
     lastDice: null,
     pendingCard: null,
     pendingAmount: 0,
+
+    showMascot(line) { set(s => { s.mascot = line; s.mascotSeq++ }) },
+    dismissMascot()  { set(s => { s.mascot = null }) },
 
     setMoving(v) { set(s => { s.isMoving = v }) },
 

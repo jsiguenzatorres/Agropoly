@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useNavigate } from 'react-router-dom'
 import { sfx } from '../../lib/sfx'
+import { DIALOGUES } from '../../lib/mascot-dialogues'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -20,14 +21,35 @@ export function GameHUD() {
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
     drawCard, applyCard, payJailFine, rollForJail, endTurn, reset,
+    showMascot,
   } = useGameStore()
   const navigate = useNavigate()
 
   const player = game?.players[game?.currentPlayerIndex ?? 0] ?? null
-  const locked = isMoving  // disable all buttons while token is animating
+  const locked = isMoving
 
   // SFX on game over
   useEffect(() => { if (pending === 'game_over') sfx.win() }, [pending])
+
+  // Mascot trigger — fires whenever pending action or active player changes
+  useEffect(() => {
+    if (!game || !player) return
+    if (!player.isAI) {
+      if      (pending === 'roll')        showMascot(DIALOGUES.roll_human())
+      else if (pending === 'buy')         showMascot(DIALOGUES.buy())
+      else if (pending === 'pay_rent')    showMascot(DIALOGUES.pay_rent())
+      else if (pending === 'pay_tax')     showMascot(DIALOGUES.pay_tax())
+      else if (pending === 'cosecha')     showMascot(DIALOGUES.cosecha())
+      else if (pending === 'riesgo')      showMascot(DIALOGUES.riesgo())
+      else if (pending === 'jail_choice') showMascot(DIALOGUES.jail())
+    } else if (pending === 'cosecha' || pending === 'riesgo') {
+      if (Math.random() < 0.4) showMascot(pending === 'cosecha' ? DIALOGUES.cosecha() : DIALOGUES.riesgo())
+    }
+    if (pending === 'game_over') {
+      const winner = game.players.find(p => !p.bankrupt)
+      if (winner) showMascot(DIALOGUES.win(winner.name))
+    }
+  }, [pending, game?.currentPlayerIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI auto-play — waits until animation finishes
   useEffect(() => {
