@@ -1,10 +1,11 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
-import { Suspense, useRef } from 'react'
-import type { Mesh } from 'three'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import type { Mesh, Group } from 'three'
 import { BOARD_DATA } from '@agropoly/game-engine'
 import { useGameStore } from '../../store/gameStore'
 import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-positions'
+import { sfx } from '../../lib/sfx'
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -12,155 +13,292 @@ const GROUP_COLOR: Record<number, string> = {
   0: '#8B1A8B', 1: '#009FDF', 2: '#D6006E', 3: '#E8610C',
   4: '#C0392B', 5: '#D4AC00', 6: '#00913A', 7: '#00297A',
 }
-
 const SPACE_COLOR: Record<string, string> = {
   go: '#F5C518', jail: '#E8A020', free: '#2E8B4A', gotojail: '#C0392B',
   tax: '#7B5228', cosecha: '#1B6B2F', riesgo: '#4A1A4A',
   station: '#555555', utility: '#888888',
 }
-
 const TOKEN_COLOR: Record<string, string> = {
-  maiz: '#F5C518', cafe: '#8B4513', vaca: '#F0F0F0',
-  tractor: '#2E8B4A', milpa: '#90EE90', pez: '#009FDF',
+  maiz: '#F5C518', cafe: '#7B4A2D', vaca: '#EEEEEE',
+  tractor: '#2E8B4A', milpa: '#80C070', pez: '#009FDF',
 }
 
-const TOKEN_EMOJI: Record<string, string> = {
-  maiz: '🌽', cafe: '☕', vaca: '🐄', tractor: '🚜', milpa: '🌱', pez: '🐟',
-}
-
-// ─── BoardTile ────────────────────────────────────────────────────────────────
+// ─── Tile ─────────────────────────────────────────────────────────────────────
 
 function BoardTile({ id }: { id: number }) {
   const space = BOARD_DATA[id]
   if (!space) return null
-
-  const pos = getBoardPosition(id)
+  const pos  = getBoardPosition(id)
   const side = getBoardSide(id)
-  const isCorner = side === 'corner'
-
-  const color = space.type === 'prop'
-    ? GROUP_COLOR[space.group]
-    : SPACE_COLOR[space.type] ?? '#444444'
-
-  const w = isCorner ? 1.0 : 0.82
-  const d = isCorner ? 1.0 : 0.88
-
-  // Offset tiles inward from edge so they sit on the board
-  const inset = isCorner ? 0 : 0.44
+  const corner = side === 'corner'
+  const color  = space.type === 'prop' ? GROUP_COLOR[space.group] : SPACE_COLOR[space.type] ?? '#444'
+  const w = corner ? 1.05 : 0.83
+  const d = corner ? 1.05 : 0.90
+  const inset = corner ? 0 : 0.44
   let x = pos[0], z = pos[2]
   if (side === 'bottom') z -= inset
   if (side === 'top')    z += inset
   if (side === 'left')   x += inset
   if (side === 'right')  x -= inset
-
-  // Horizontal vs vertical tile
-  const isVertical = side === 'left' || side === 'right'
-
+  const vert = side === 'left' || side === 'right'
   return (
-    <mesh position={[x, 0.03, z]} castShadow receiveShadow>
-      <boxGeometry args={isVertical ? [d, 0.06, w] : [w, 0.06, d]} />
-      <meshStandardMaterial color={color} roughness={0.4} metalness={0.15} />
+    <mesh position={[x, 0.03, z]} receiveShadow>
+      <boxGeometry args={vert ? [d, 0.06, w] : [w, 0.06, d]} />
+      <meshStandardMaterial color={color} roughness={0.35} metalness={0.15} />
     </mesh>
   )
 }
 
-// ─── OwnerIndicator ────────────────────────────────────────────────────────────
-
-function OwnerIndicator({ id }: { id: number }) {
-  const game = useGameStore(s => s.game)
-  if (!game) return null
-  const space = game.board[id]
+function OwnerDot({ id }: { id: number }) {
+  const space = useGameStore(s => s.game?.board[id])
+  const players = useGameStore(s => s.game?.players)
   if (!space?.ownerId || space.type !== 'prop') return null
-  const owner = game.players.find(p => p.id === space.ownerId)
+  const owner = players?.find(p => p.id === space.ownerId)
   if (!owner) return null
-
   const pos = getBoardPosition(id)
-  const color = TOKEN_COLOR[owner.tokenId] ?? '#ffffff'
-
+  const color = TOKEN_COLOR[owner.tokenId] ?? '#fff'
   return (
-    <mesh position={[pos[0], 0.12, pos[2]]}>
-      <cylinderGeometry args={[0.08, 0.08, 0.08, 8]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+    <mesh position={[pos[0], 0.13, pos[2]]}>
+      <cylinderGeometry args={[0.07, 0.07, 0.07, 8]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
     </mesh>
   )
 }
 
-// ─── PlayerToken ──────────────────────────────────────────────────────────────
+// ─── Token shapes per tokenId ──────────────────────────────────────────────
 
-function PlayerToken({ playerId, playerIndex }: { playerId: string; playerIndex: number }) {
-  const game = useGameStore(s => s.game)
-  const currentIdx = useGameStore(s => s.game?.currentPlayerIndex ?? 0)
-  const meshRef = useRef<Mesh>(null)
+function TokenShape({ tokenId, color }: { tokenId: string; color: string }) {
+  switch (tokenId) {
+    case 'maiz':
+      return (
+        <group>
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.10, 0.12, 0.28, 10]} />
+            <meshStandardMaterial color={color} roughness={0.2} metalness={0.4} emissive={color} emissiveIntensity={0.2} />
+          </mesh>
+          {/* hoja */}
+          <mesh position={[0.09, 0.14, 0]} rotation={[0, 0, 0.5]}>
+            <coneGeometry args={[0.06, 0.20, 6]} />
+            <meshStandardMaterial color="#4CAF70" roughness={0.4} />
+          </mesh>
+        </group>
+      )
+    case 'cafe':
+      return (
+        <mesh>
+          <sphereGeometry args={[0.14, 10, 10]} />
+          <meshStandardMaterial color={color} roughness={0.15} metalness={0.5} emissive={color} emissiveIntensity={0.15} />
+        </mesh>
+      )
+    case 'vaca':
+      return (
+        <group>
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[0.22, 0.18, 0.14]} />
+            <meshStandardMaterial color={color} roughness={0.5} />
+          </mesh>
+          {/* cabeza */}
+          <mesh position={[0, 0.14, 0.07]}>
+            <boxGeometry args={[0.14, 0.12, 0.12]} />
+            <meshStandardMaterial color={color} roughness={0.5} />
+          </mesh>
+        </group>
+      )
+    case 'tractor':
+      return (
+        <group>
+          {/* cuerpo */}
+          <mesh position={[0, -0.02, 0]}>
+            <boxGeometry args={[0.24, 0.12, 0.18]} />
+            <meshStandardMaterial color={color} roughness={0.3} metalness={0.6} />
+          </mesh>
+          {/* cabina */}
+          <mesh position={[-0.04, 0.08, 0]}>
+            <boxGeometry args={[0.14, 0.10, 0.14]} />
+            <meshStandardMaterial color="#1B4A25" roughness={0.3} metalness={0.5} />
+          </mesh>
+          {/* rueda trasera */}
+          <mesh position={[0.10, -0.04, 0.10]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.07, 0.025, 6, 12]} />
+            <meshStandardMaterial color="#222" roughness={0.8} />
+          </mesh>
+          <mesh position={[0.10, -0.04, -0.10]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.07, 0.025, 6, 12]} />
+            <meshStandardMaterial color="#222" roughness={0.8} />
+          </mesh>
+        </group>
+      )
+    case 'milpa':
+      return (
+        <group>
+          <mesh>
+            <coneGeometry args={[0.12, 0.32, 8]} />
+            <meshStandardMaterial color={color} roughness={0.3} metalness={0.2} emissive={color} emissiveIntensity={0.15} />
+          </mesh>
+          <mesh position={[0, -0.18, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 0.08, 6]} />
+            <meshStandardMaterial color="#5D8A3C" roughness={0.6} />
+          </mesh>
+        </group>
+      )
+    case 'pez':
+      return (
+        <group rotation={[0, Math.PI / 4, 0]}>
+          <mesh scale={[1.5, 0.75, 1.0]}>
+            <sphereGeometry args={[0.12, 10, 8]} />
+            <meshStandardMaterial color={color} roughness={0.15} metalness={0.5} emissive={color} emissiveIntensity={0.2} />
+          </mesh>
+          {/* cola */}
+          <mesh position={[-0.16, 0, 0]} rotation={[0, 0, Math.PI / 4]}>
+            <coneGeometry args={[0.06, 0.10, 4]} />
+            <meshStandardMaterial color={color} roughness={0.2} metalness={0.4} />
+          </mesh>
+        </group>
+      )
+    default:
+      return (
+        <mesh>
+          <capsuleGeometry args={[0.09, 0.22, 4, 8]} />
+          <meshStandardMaterial color={color} roughness={0.25} emissive={color} emissiveIntensity={0.15} />
+        </mesh>
+      )
+  }
+}
 
-  useFrame(({ clock }) => {
-    if (!meshRef.current) return
-    const isActive = playerIndex === currentIdx
-    meshRef.current.position.y = isActive
-      ? 0.35 + Math.sin(clock.elapsedTime * 3) * 0.06
-      : 0.25
+// ─── Animated Player Token ────────────────────────────────────────────────────
+
+function computeSteps(from: number, to: number): number[] {
+  if (from === to) return []
+  const fwd = (to - from + 40) % 40
+  const bwd = 40 - fwd
+  const useBack = bwd < fwd && bwd <= 6  // only go backward for short card moves
+  const count = useBack ? bwd : fwd
+  const dir   = useBack ? -1 : 1
+  const steps: number[] = []
+  let p = from
+  for (let i = 0; i < count; i++) {
+    p = (p + dir + 40) % 40
+    steps.push(p)
+  }
+  return steps
+}
+
+const STEP_INTERVAL = 0.13  // seconds per space
+
+function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
+  const game      = useGameStore(s => s.game)
+  const gameId    = useGameStore(s => s.gameId)
+  const setMoving = useGameStore(s => s.setMoving)
+  const curIdx    = useGameStore(s => s.game?.currentPlayerIndex ?? 0)
+
+  const player = game?.players[playerIndex]
+
+  const [visualPos, setVisualPos] = useState(player?.position ?? 0)
+  const stepQueue  = useRef<number[]>([])
+  const stepTimer  = useRef(0)
+  const lastTarget = useRef(player?.position ?? 0)
+  const groupRef   = useRef<Group>(null)
+  const bobTimer   = useRef(0)
+
+  // Reset visual pos when new game starts
+  useEffect(() => { setVisualPos(0); stepQueue.current = []; lastTarget.current = 0 }, [gameId])
+
+  // Queue steps when game position changes
+  useEffect(() => {
+    if (!player) return
+    const to = player.position
+    if (to === lastTarget.current) return
+    const steps = computeSteps(lastTarget.current, to)
+    lastTarget.current = to
+    if (steps.length === 0) return
+    stepQueue.current = steps
+    stepTimer.current = 0
+    setMoving(true)
+  }, [player?.position])
+
+  useFrame((_, delta) => {
+    if (!groupRef.current || !player) return
+
+    // Step animation
+    if (stepQueue.current.length > 0) {
+      stepTimer.current += delta
+      if (stepTimer.current >= STEP_INTERVAL) {
+        stepTimer.current -= STEP_INTERVAL
+        const next = stepQueue.current.shift()!
+        setVisualPos(next)
+        sfx.step()
+        if (stepQueue.current.length === 0) setMoving(false)
+      }
+      // Arc Y during movement
+      const progress = stepTimer.current / STEP_INTERVAL
+      groupRef.current.position.y = 0.06 + Math.sin(progress * Math.PI) * 0.25
+    } else {
+      // Idle bob for active player
+      const isActive = playerIndex === curIdx
+      if (isActive) {
+        bobTimer.current += delta
+        groupRef.current.position.y = 0.04 + Math.sin(bobTimer.current * 2.8) * 0.05
+      } else {
+        groupRef.current.position.y = 0.04
+      }
+    }
   })
 
-  if (!game) return null
-  const player = game.players[playerIndex]
   if (!player || player.bankrupt) return null
-
-  const pos = getBoardPosition(player.position)
+  const basePos  = getBoardPosition(visualPos)
   const [ox, oz] = getTokenOffset(playerIndex)
-  const color = TOKEN_COLOR[player.tokenId] ?? '#ffffff'
+  const color    = TOKEN_COLOR[player.tokenId] ?? '#ffffff'
+  const isActive = playerIndex === curIdx
 
   return (
-    <group position={[pos[0] + ox, 0, pos[2] + oz]}>
-      {/* Base */}
-      <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[0.15, 0.18, 0.08, 12]} />
-        <meshStandardMaterial color={color} roughness={0.3} metalness={0.5} />
+    <group ref={groupRef} position={[basePos[0] + ox, 0.04, basePos[2] + oz]}>
+      {/* Base disk */}
+      <mesh position={[0, -0.04, 0]} receiveShadow>
+        <cylinderGeometry args={[0.17, 0.20, 0.06, 12]} />
+        <meshStandardMaterial color={color} roughness={0.4} metalness={0.5} />
       </mesh>
-      {/* Body */}
-      <mesh ref={meshRef} position={[0, 0.25, 0]}>
-        <capsuleGeometry args={[0.10, 0.22, 4, 8]} />
-        <meshStandardMaterial color={color} roughness={0.2} metalness={0.4} emissive={color} emissiveIntensity={0.15} />
+      {/* Token shape */}
+      <mesh castShadow position={[0, 0.14, 0]}>
+        <TokenShape tokenId={player.tokenId} color={color} />
       </mesh>
+      {/* Active glow ring */}
+      {isActive && (
+        <mesh position={[0, -0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.20, 0.26, 24]} />
+          <meshBasicMaterial color={color} transparent opacity={0.6} />
+        </mesh>
+      )}
     </group>
   )
 }
 
-// ─── Board ────────────────────────────────────────────────────────────────────
+// ─── Board & Lights ───────────────────────────────────────────────────────────
 
 function Board() {
   return (
     <>
-      {/* Base verde BFA */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[9.8, 9.8]} />
         <meshStandardMaterial color="#0D2B14" roughness={0.9} />
       </mesh>
-      {/* Borde exterior */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[11, 11]} />
+        <planeGeometry args={[11.2, 11.2]} />
         <meshStandardMaterial color="#1B6B2F" roughness={0.6} metalness={0.1} />
       </mesh>
-      {/* Cuadrícula interior */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-        <planeGeometry args={[7, 7]} />
-        <meshStandardMaterial color="#132618" roughness={0.95} />
+        <planeGeometry args={[7.1, 7.1]} />
+        <meshStandardMaterial color="#111F13" roughness={0.95} />
       </mesh>
     </>
   )
 }
 
-// ─── Lights ───────────────────────────────────────────────────────────────────
-
 function Lights() {
   return (
     <>
       <ambientLight intensity={0.5} />
-      <directionalLight
-        position={[6, 10, 6]}
-        intensity={1.4}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        color="#FDF8EE"
-      />
+      <directionalLight position={[6, 10, 6]} intensity={1.4} castShadow
+        shadow-mapSize={[2048, 2048]} color="#FDF8EE" />
       <pointLight position={[0, 4, 0]} intensity={1.0} color="#F5C518" distance={10} decay={2} />
     </>
   )
@@ -170,49 +308,27 @@ function Lights() {
 
 function Scene() {
   const game = useGameStore(s => s.game)
-
   return (
     <>
       <Lights />
       <Board />
-
-      {/* 40 casillas */}
-      {BOARD_DATA.map(space => (
-        <BoardTile key={space.id} id={space.id} />
+      {BOARD_DATA.map(s => <BoardTile key={s.id} id={s.id} />)}
+      {BOARD_DATA.map(s => <OwnerDot  key={`d${s.id}`} id={s.id} />)}
+      {game?.players.map((_, i) => (
+        <AnimatedPlayerToken key={i} playerIndex={i} />
       ))}
-
-      {/* Indicadores de propietario */}
-      {BOARD_DATA.map(space => (
-        <OwnerIndicator key={`own-${space.id}`} id={space.id} />
-      ))}
-
-      {/* Tokens de jugadores */}
-      {game?.players.map((p, i) => (
-        <PlayerToken key={p.id} playerId={p.id} playerIndex={i} />
-      ))}
-
       <Environment preset="forest" />
-      <OrbitControls
-        enablePan={false}
-        minDistance={4}
-        maxDistance={16}
-        maxPolarAngle={Math.PI / 2.1}
-        target={[0, 0, 0]}
-      />
+      <OrbitControls enablePan={false} minDistance={4} maxDistance={16}
+        maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
     </>
   )
 }
 
-// ─── Export ───────────────────────────────────────────────────────────────────
-
 export default function GameScene() {
   return (
-    <Canvas
-      shadows
-      camera={{ position: [0, 9, 9], fov: 48, near: 0.1, far: 100 }}
+    <Canvas shadows camera={{ position: [0, 9, 9], fov: 48, near: 0.1, far: 100 }}
       gl={{ antialias: true, alpha: false }}
-      style={{ background: '#060E08', width: '100%', height: '100%' }}
-    >
+      style={{ background: '#060E08', width: '100%', height: '100%' }}>
       <Suspense fallback={null}>
         <Scene />
       </Suspense>

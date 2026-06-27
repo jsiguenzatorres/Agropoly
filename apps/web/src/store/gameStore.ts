@@ -22,11 +22,14 @@ export interface PlayerSetup {
 
 interface GameStore {
   game: GameState | null
+  gameId: number          // increments on initGame so tokens reset visual pos
+  isMoving: boolean       // true while token animation plays
   pending: PendingAction
   lastDice: { d1: number; d2: number; doubles: boolean } | null
   pendingCard: Card | null
   pendingAmount: number
 
+  setMoving: (v: boolean) => void
   initGame: (setups: PlayerSetup[], eduMode: boolean) => void
   rollDice: () => void
   confirmBuy: () => void
@@ -81,10 +84,14 @@ function nextPlayerIndex(game: GameState): number {
 export const useGameStore = create<GameStore>()(
   immer((set, get) => ({
     game: null,
+    gameId: 0,
+    isMoving: false,
     pending: 'roll',
     lastDice: null,
     pendingCard: null,
     pendingAmount: 0,
+
+    setMoving(v) { set(s => { s.isMoving = v }) },
 
     initGame(setups, eduMode) {
       const players = setups.map((s, i) => freshPlayer(s, `p${i}`))
@@ -101,7 +108,15 @@ export const useGameStore = create<GameStore>()(
         educationalMode: eduMode,
         winner: null,
       }
-      set({ game, pending: 'roll', lastDice: null, pendingCard: null, pendingAmount: 0 })
+      set(s => {
+        s.game = game
+        s.gameId++
+        s.isMoving = false
+        s.pending = 'roll'
+        s.lastDice = null
+        s.pendingCard = null
+        s.pendingAmount = 0
+      })
     },
 
     rollDice() {

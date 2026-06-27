@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useNavigate } from 'react-router-dom'
+import { sfx } from '../../lib/sfx'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -16,18 +17,22 @@ function Die({ value }: { value: number }) {
 }
 
 export function GameHUD() {
-  const { game, pending, lastDice, pendingCard, pendingAmount,
+  const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
     drawCard, applyCard, payJailFine, rollForJail, endTurn, reset,
   } = useGameStore()
   const navigate = useNavigate()
 
-  const player = game?.players[game.currentPlayerIndex] ?? null
+  const player = game?.players[game?.currentPlayerIndex ?? 0] ?? null
+  const locked = isMoving  // disable all buttons while token is animating
 
-  // AI auto-play
+  // SFX on game over
+  useEffect(() => { if (pending === 'game_over') sfx.win() }, [pending])
+
+  // AI auto-play — waits until animation finishes
   useEffect(() => {
-    if (!game || !player?.isAI || pending === 'game_over') return
-    const delay = pending === 'roll' ? 1200 : 900
+    if (!game || !player?.isAI || pending === 'game_over' || isMoving) return
+    const delay = pending === 'roll' ? 1400 : 900
     const t = setTimeout(() => {
       const space = game.board[player.position]
       if      (pending === 'roll')       rollDice()
@@ -40,7 +45,7 @@ export function GameHUD() {
       else if (pending === 'end')        endTurn()
     }, delay)
     return () => clearTimeout(t)
-  }, [pending, game?.currentPlayerIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pending, game?.currentPlayerIndex, isMoving]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!game || !player) return null
   const space = game.board[player.position]
@@ -100,41 +105,52 @@ export function GameHUD() {
           {player.isAI ? '🤖' : '👤'} {player.name} · ƒ{player.balance}
         </p>
 
+        {/* Animation indicator */}
+        {locked && (
+          <div className="glass-card px-4 py-1.5 text-center">
+            <p className="text-bfa-gold-500 font-mono text-xs tracking-widest animate-pulse">
+              moviendo…
+            </p>
+          </div>
+        )}
+
         {/* Buttons */}
-        {isHuman && (
+        {isHuman && !locked && (
           <div className="flex flex-col gap-2 w-full">
 
             {pending === 'roll' && (
-              <button onClick={rollDice} className="btn-gold w-full">
+              <button onClick={() => { sfx.dice(); rollDice() }} className="btn-gold w-full">
                 🎲 Lanzar Dados
               </button>
             )}
 
             {pending === 'buy' && space && (
               <>
-                <button onClick={confirmBuy} disabled={player.balance < space.price} className="btn-gold w-full">
+                <button
+                  onClick={() => { sfx.buy(); confirmBuy() }}
+                  disabled={player.balance < space.price}
+                  className="btn-gold w-full"
+                >
                   🏠 Comprar por ƒ{space.price}
                 </button>
-                <button onClick={skipBuy} className="btn-secondary w-full">
-                  Pasar
-                </button>
+                <button onClick={skipBuy} className="btn-secondary w-full">Pasar</button>
               </>
             )}
 
             {pending === 'pay_rent' && (
-              <button onClick={confirmRent} className="btn-primary w-full">
+              <button onClick={() => { sfx.rent(); confirmRent() }} className="btn-primary w-full">
                 💸 Pagar renta ƒ{pendingAmount}
               </button>
             )}
 
             {pending === 'pay_tax' && (
-              <button onClick={confirmTax} className="btn-primary w-full">
+              <button onClick={() => { sfx.tax(); confirmTax() }} className="btn-primary w-full">
                 🧾 Pagar impuesto ƒ{pendingAmount}
               </button>
             )}
 
             {(pending === 'cosecha' || pending === 'riesgo') && (
-              <button onClick={drawCard} className="btn-gold w-full">
+              <button onClick={() => { sfx.card(); drawCard() }} className="btn-gold w-full">
                 {pending === 'cosecha' ? '🌾 Robar Tarjeta Cosecha' : '⚡ Robar Tarjeta Riesgo'}
               </button>
             )}
@@ -152,10 +168,14 @@ export function GameHUD() {
 
             {pending === 'jail_choice' && (
               <>
-                <button onClick={payJailFine} disabled={player.balance < 50} className="btn-gold w-full">
+                <button
+                  onClick={() => { sfx.jail(); payJailFine() }}
+                  disabled={player.balance < 50}
+                  className="btn-gold w-full"
+                >
                   💰 Pagar fianza ƒ50
                 </button>
-                <button onClick={rollForJail} className="btn-secondary w-full">
+                <button onClick={() => { sfx.dice(); rollForJail() }} className="btn-secondary w-full">
                   🎲 Intentar dobles
                 </button>
               </>
