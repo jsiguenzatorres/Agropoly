@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useNavigate } from 'react-router-dom'
 import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
+import { EDU_TIPS } from '../../lib/edu-tips'
 import { canBuild, checkGroupOwnership, HOTEL_LEVEL } from '@agropoly/game-engine'
 
 const GROUP_NAMES: Record<number, string> = {
@@ -22,7 +23,7 @@ export function GameHUD() {
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
     drawCard, applyCard, payJailFine, rollForJail, endTurn, reset,
-    showMascot, build,
+    showMascot, showEduTip, build,
   } = useGameStore()
   const navigate = useNavigate()
 
@@ -50,6 +51,26 @@ export function GameHUD() {
       const winner = game.players.find(p => !p.bankrupt)
       if (winner) showMascot(DIALOGUES.win(winner.name))
     }
+  }, [pending, game?.currentPlayerIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Educational mode: BFA tips on key events ────────────────────────────────
+  // Track each player's previous position to detect "passed GO"
+  const prevPositions = useRef<Record<string, number>>({})
+  useEffect(() => {
+    if (!game?.educationalMode || !player) return
+
+    // "Passed GO" detection: position decreased (wrap-around) or landed on 0
+    const prev = prevPositions.current[player.id] ?? 0
+    const passedGo = (player.position < prev || (player.position === 0 && prev !== 0))
+    prevPositions.current[player.id] = player.position
+
+    if (passedGo)                       { showEduTip(EDU_TIPS.go_pass()); return }
+    if (pending === 'buy'      && Math.random() < 0.6) showEduTip(EDU_TIPS.buy())
+    else if (pending === 'pay_rent' && Math.random() < 0.5) showEduTip(EDU_TIPS.pay_rent())
+    else if (pending === 'pay_tax'  && Math.random() < 0.7) showEduTip(EDU_TIPS.pay_tax())
+    else if (pending === 'cosecha'  && Math.random() < 0.5) showEduTip(EDU_TIPS.cosecha())
+    else if (pending === 'riesgo'   && Math.random() < 0.6) showEduTip(EDU_TIPS.riesgo())
+    else if (pending === 'jail_choice')                     showEduTip(EDU_TIPS.jail())
   }, [pending, game?.currentPlayerIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI auto-play — waits until animation finishes
@@ -243,7 +264,10 @@ export function GameHUD() {
                         return (
                           <button
                             key={sp.id}
-                            onClick={() => { sfx.buy(); build(sp.id) }}
+                            onClick={() => {
+                              sfx.buy(); build(sp.id)
+                              if (game.educationalMode && Math.random() < 0.4) showEduTip(EDU_TIPS.build())
+                            }}
                             disabled={!r.canBuild}
                             className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-bfa-gold-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs"
                             title={r.canBuild ? `Construir por ƒ${sp.hcost}` : (r.reason ?? '')}

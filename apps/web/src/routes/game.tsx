@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
 import { GameHUD } from '../components/ui/GameHUD'
 import { MascotOverlay } from '../components/ui/MascotOverlay'
+import { EduTipOverlay } from '../components/ui/EduTipOverlay'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -35,6 +36,7 @@ export function Component() {
       </Suspense>
       <GameHUD />
       <MascotOverlay />
+      <EduTipOverlay />
     </div>
   )
 }

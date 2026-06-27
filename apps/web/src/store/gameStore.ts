@@ -8,6 +8,7 @@ import {
 } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
 import type { MascotLine } from '../lib/mascot-dialogues'
+import type { EduTip } from '../lib/edu-tips'
 
 export type PendingAction =
   | 'roll' | 'buy' | 'pay_rent' | 'pay_tax'
@@ -34,6 +35,11 @@ interface GameStore {
   mascotSeq: number       // monotonically increasing; triggers MascotOverlay effect even for same text
   showMascot: (line: MascotLine) => void
   dismissMascot: () => void
+
+  eduTip: EduTip | null
+  eduTipSeq: number
+  showEduTip: (tip: EduTip) => void
+  dismissEduTip: () => void
 
   setMoving: (v: boolean) => void
   initGame: (setups: PlayerSetup[], eduMode: boolean) => void
@@ -95,6 +101,8 @@ export const useGameStore = create<GameStore>()(
     isMoving: false,
     mascot: null,
     mascotSeq: 0,
+    eduTip: null,
+    eduTipSeq: 0,
     pending: 'roll',
     lastDice: null,
     pendingCard: null,
@@ -102,6 +110,9 @@ export const useGameStore = create<GameStore>()(
 
     showMascot(line) { set(s => { s.mascot = line; s.mascotSeq++ }) },
     dismissMascot()  { set(s => { s.mascot = null }) },
+
+    showEduTip(tip)  { set(s => { s.eduTip = tip; s.eduTipSeq++ }) },
+    dismissEduTip()  { set(s => { s.eduTip = null }) },
 
     setMoving(v) { set(s => { s.isMoving = v }) },
 

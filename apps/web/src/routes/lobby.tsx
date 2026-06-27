@@ -98,15 +98,18 @@ export function Component() {
         </div>
 
         {/* Modo educativo */}
-        <label className="flex items-center gap-3 cursor-pointer">
+        <button
+          type="button"
+          onClick={() => setEduMode(v => !v)}
+          className="flex items-center gap-3 cursor-pointer w-fit text-left"
+        >
           <div
-            onClick={() => setEduMode(v => !v)}
             className={`w-10 h-6 rounded-full transition-colors ${eduMode ? 'bg-bfa-green-500' : 'bg-white/20'} relative`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${eduMode ? 'left-5' : 'left-1'}`} />
           </div>
           <span className="text-sm text-bfa-cream/70">Modo Educativo BFA</span>
-        </label>
+        </button>
 
         <button
           className="btn-gold mt-2"
