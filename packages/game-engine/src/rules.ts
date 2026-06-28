@@ -53,6 +53,71 @@ export function canBuildBalanced(spaceId: number, board: BoardSpace[]): boolean 
   return (space.buildings ?? 0) <= minBuildings
 }
 
+// ─── Mortgage & sell ──────────────────────────────────────────────────────────
+
+export const MORTGAGE_RATE   = 0.5    // bank pays 50% of price to mortgage
+export const UNMORTGAGE_RATE = 1.1    // owner pays 55% to lift (50% × 1.10)
+
+export function mortgageValue(space: BoardSpace): number {
+  return Math.floor(space.price * MORTGAGE_RATE)
+}
+
+export function unmortgageCost(space: BoardSpace): number {
+  return Math.ceil(space.price * MORTGAGE_RATE * UNMORTGAGE_RATE)
+}
+
+export function sellBuildingValue(space: BoardSpace): number {
+  return Math.floor(space.hcost * MORTGAGE_RATE)  // sell improvements at 50% cost
+}
+
+export interface MortgageResult {
+  canDo: boolean
+  reason?: 'not_owned' | 'already_mortgaged' | 'has_buildings' | 'wrong_type'
+}
+
+export function canMortgage(spaceId: number, playerId: string, board: BoardSpace[]): MortgageResult {
+  const space = board[spaceId]
+  if (!space)                                     return { canDo: false, reason: 'wrong_type' }
+  if (space.ownerId !== playerId)                 return { canDo: false, reason: 'not_owned' }
+  if (space.mortgaged)                            return { canDo: false, reason: 'already_mortgaged' }
+  if (space.type !== 'prop' && space.type !== 'station' && space.type !== 'utility')
+    return { canDo: false, reason: 'wrong_type' }
+  if ((space.buildings ?? 0) > 0)                 return { canDo: false, reason: 'has_buildings' }
+  return { canDo: true }
+}
+
+export interface UnmortgageResult {
+  canDo: boolean
+  reason?: 'not_owned' | 'not_mortgaged' | 'insufficient_funds'
+}
+
+export function canUnmortgage(spaceId: number, playerId: string, board: BoardSpace[], players: Player[]): UnmortgageResult {
+  const space = board[spaceId]
+  if (!space || space.ownerId !== playerId) return { canDo: false, reason: 'not_owned' }
+  if (!space.mortgaged)                      return { canDo: false, reason: 'not_mortgaged' }
+  const player = players.find(p => p.id === playerId)
+  if (!player || player.balance < unmortgageCost(space)) {
+    return { canDo: false, reason: 'insufficient_funds' }
+  }
+  return { canDo: true }
+}
+
+export interface SellBuildingResult {
+  canDo: boolean
+  reason?: 'not_owned' | 'no_buildings' | 'not_balanced'
+}
+
+export function canSellBuilding(spaceId: number, playerId: string, board: BoardSpace[]): SellBuildingResult {
+  const space = board[spaceId]
+  if (!space || space.ownerId !== playerId) return { canDo: false, reason: 'not_owned' }
+  if ((space.buildings ?? 0) <= 0)          return { canDo: false, reason: 'no_buildings' }
+  // Balanced selling: can only sell from the property with the most buildings in the group
+  const groupProps = board.filter(s => s.group === space.group && s.type === 'prop')
+  const maxBuildings = Math.max(...groupProps.map(s => s.buildings ?? 0))
+  if ((space.buildings ?? 0) < maxBuildings) return { canDo: false, reason: 'not_balanced' }
+  return { canDo: true }
+}
+
 export function getNetWorth(player: Player, board: BoardSpace[]): number {
   const propValue = player.properties.reduce((sum, spaceId) => {
     const space = board[spaceId]

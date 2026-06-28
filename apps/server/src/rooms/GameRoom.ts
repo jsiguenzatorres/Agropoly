@@ -3,6 +3,8 @@ import {
   BOARD_DATA, STARTING_BALANCE, GO_AMOUNT,
   JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS, HOTEL_LEVEL,
   calcRent, canBuild, getNetWorth,
+  canMortgage, canUnmortgage, canSellBuilding,
+  mortgageValue, unmortgageCost, sellBuildingValue,
   shuffle, COSECHA_DECK, RIESGO_DECK,
 } from '@agropoly/game-engine'
 import type { Card } from '@agropoly/game-engine'
@@ -54,6 +56,18 @@ export class GameRoom extends Room<GameStateSchema> {
     this.onMessage('build',
       (client, msg: { spaceId: number }) =>
         this.guard(client, () => this.build(msg?.spaceId))
+    )
+    this.onMessage('sell_building',
+      (client, msg: { spaceId: number }) =>
+        this.guard(client, () => this.sellBuilding(msg?.spaceId))
+    )
+    this.onMessage('mortgage',
+      (client, msg: { spaceId: number }) =>
+        this.guard(client, () => this.mortgage(msg?.spaceId))
+    )
+    this.onMessage('unmortgage',
+      (client, msg: { spaceId: number }) =>
+        this.guard(client, () => this.unmortgage(msg?.spaceId))
     )
 
     console.log(`[GameRoom] Created — roomId=${this.roomId}`)
@@ -380,6 +394,43 @@ export class GameRoom extends Room<GameStateSchema> {
     if (!space) return
     player.balance -= space.hcost
     space.buildings++
+  }
+
+  private sellBuilding(spaceId: number) {
+    const player = this.state.players[this.state.currentPlayerIndex]
+    if (!player || player.bankrupt) return
+    const board = this.toEngineBoard()
+    const r = canSellBuilding(spaceId, player.id, board)
+    if (!r.canDo) return
+    const space = this.state.board[spaceId]
+    if (!space) return
+    space.buildings--
+    player.balance += sellBuildingValue(board[spaceId])
+  }
+
+  private mortgage(spaceId: number) {
+    const player = this.state.players[this.state.currentPlayerIndex]
+    if (!player || player.bankrupt) return
+    const board = this.toEngineBoard()
+    const r = canMortgage(spaceId, player.id, board)
+    if (!r.canDo) return
+    const space = this.state.board[spaceId]
+    if (!space) return
+    space.mortgaged = true
+    player.balance += mortgageValue(board[spaceId])
+  }
+
+  private unmortgage(spaceId: number) {
+    const player = this.state.players[this.state.currentPlayerIndex]
+    if (!player || player.bankrupt) return
+    const board = this.toEngineBoard()
+    const players = this.toEnginePlayers()
+    const r = canUnmortgage(spaceId, player.id, board, players)
+    if (!r.canDo) return
+    const space = this.state.board[spaceId]
+    if (!space) return
+    player.balance -= unmortgageCost(board[spaceId])
+    space.mortgaged = false
   }
 
   private endTurn() {

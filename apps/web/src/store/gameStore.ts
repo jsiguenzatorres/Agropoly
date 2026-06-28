@@ -3,7 +3,8 @@ import { immer } from 'zustand/middleware/immer'
 import {
   BOARD_DATA, STARTING_BALANCE, GO_AMOUNT,
   JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS,
-  calcRent, canBuild,
+  calcRent, canBuild, canMortgage, canUnmortgage, canSellBuilding,
+  mortgageValue, unmortgageCost, sellBuildingValue,
   shuffle, COSECHA_DECK, RIESGO_DECK,
 } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
@@ -56,6 +57,9 @@ interface GameStore {
   rollForJail: () => void
   endTurn: () => void
   build: (spaceId: number) => void
+  sellBuilding: (spaceId: number) => void
+  mortgage: (spaceId: number) => void
+  unmortgage: (spaceId: number) => void
   reset: () => void
 }
 
@@ -409,6 +413,48 @@ export const useGameStore = create<GameStore>()(
         if (!space) return
         player.balance -= space.hcost
         space.buildings = (space.buildings ?? 0) + 1
+      })
+    },
+
+    sellBuilding(spaceId) {
+      set(s => {
+        if (!s.game) return
+        const player = s.game.players[s.game.currentPlayerIndex]
+        if (!player || player.bankrupt) return
+        const r = canSellBuilding(spaceId, player.id, s.game.board)
+        if (!r.canDo) return
+        const space = s.game.board[spaceId]
+        if (!space) return
+        space.buildings = (space.buildings ?? 0) - 1
+        player.balance += sellBuildingValue(space)
+      })
+    },
+
+    mortgage(spaceId) {
+      set(s => {
+        if (!s.game) return
+        const player = s.game.players[s.game.currentPlayerIndex]
+        if (!player || player.bankrupt) return
+        const r = canMortgage(spaceId, player.id, s.game.board)
+        if (!r.canDo) return
+        const space = s.game.board[spaceId]
+        if (!space) return
+        space.mortgaged = true
+        player.balance += mortgageValue(space)
+      })
+    },
+
+    unmortgage(spaceId) {
+      set(s => {
+        if (!s.game) return
+        const player = s.game.players[s.game.currentPlayerIndex]
+        if (!player || player.bankrupt) return
+        const r = canUnmortgage(spaceId, player.id, s.game.board, s.game.players)
+        if (!r.canDo) return
+        const space = s.game.board[spaceId]
+        if (!space) return
+        player.balance -= unmortgageCost(space)
+        space.mortgaged = false
       })
     },
 

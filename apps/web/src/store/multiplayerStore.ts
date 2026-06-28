@@ -35,6 +35,9 @@ interface MultiplayerStore {
   rollForJail:  () => void
   endTurn:      () => void
   build:        (spaceId: number) => void
+  sellBuilding: (spaceId: number) => void
+  mortgage:     (spaceId: number) => void
+  unmortgage:   (spaceId: number) => void
 }
 
 // ── Schema projection: turn an ArraySchema/MapSchema state into plain GameState shape
@@ -163,8 +166,11 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   applyCard()    { get().room?.send('apply_card') },
   payJailFine()  { get().room?.send('pay_jail_fine') },
   rollForJail()  { get().room?.send('roll_for_jail') },
-  endTurn()      { get().room?.send('end_turn') },
-  build(spaceId) { get().room?.send('build', { spaceId }) },
+  endTurn()           { get().room?.send('end_turn') },
+  build(spaceId)      { get().room?.send('build', { spaceId }) },
+  sellBuilding(spaceId) { get().room?.send('sell_building', { spaceId }) },
+  mortgage(spaceId)   { get().room?.send('mortgage', { spaceId }) },
+  unmortgage(spaceId) { get().room?.send('unmortgage', { spaceId }) },
 }))
 
 if (import.meta.env.DEV) {

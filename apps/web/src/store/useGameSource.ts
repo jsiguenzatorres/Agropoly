@@ -27,6 +27,9 @@ export interface GameSource {
   rollForJail:  () => void
   endTurn:      () => void
   build:        (spaceId: number) => void
+  sellBuilding: (spaceId: number) => void
+  mortgage:     (spaceId: number) => void
+  unmortgage:   (spaceId: number) => void
   reset:        () => void
 }
 
@@ -56,6 +59,9 @@ export function useGameSource(mode: 'solo' | 'multi'): GameSource {
       rollForJail:   multi.rollForJail,
       endTurn:       multi.endTurn,
       build:         multi.build,
+      sellBuilding:  multi.sellBuilding,
+      mortgage:      multi.mortgage,
+      unmortgage:    multi.unmortgage,
       reset:         multi.disconnect,
     }
   }
@@ -78,6 +84,9 @@ export function useGameSource(mode: 'solo' | 'multi'): GameSource {
     rollForJail:   solo.rollForJail,
     endTurn:       solo.endTurn,
     build:         solo.build,
+    sellBuilding:  solo.sellBuilding,
+    mortgage:      solo.mortgage,
+    unmortgage:    solo.unmortgage,
     reset:         solo.reset,
   }
 }

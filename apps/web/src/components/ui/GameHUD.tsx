@@ -5,7 +5,11 @@ import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
 import { EDU_TIPS } from '../../lib/edu-tips'
 import { postSoloSession } from '../../lib/sessions-api'
-import { canBuild, checkGroupOwnership, HOTEL_LEVEL } from '@agropoly/game-engine'
+import {
+  canBuild, canMortgage, canUnmortgage, canSellBuilding,
+  mortgageValue, unmortgageCost, sellBuildingValue,
+  HOTEL_LEVEL,
+} from '@agropoly/game-engine'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -24,7 +28,8 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const src = useGameSource(mode)
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
-    drawCard, applyCard, payJailFine, rollForJail, endTurn, build,
+    drawCard, applyCard, payJailFine, rollForJail, endTurn,
+    build, sellBuilding, mortgage, unmortgage,
   } = src
   // Mascot/EduTip state lives only in the local gameStore — both modes use it
   const showMascot = useGameStore(s => s.showMascot)
@@ -259,39 +264,85 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
             )}
 
             {pending === 'end' && (() => {
-              // Propiedades del jugador donde puede construir o ya tiene buildings
+              // All player-owned properties (incl. station/utility for mortgage)
               const ownedProps = player.properties
                 .map(id => game.board[id])
-                .filter(sp => sp && sp.type === 'prop' && checkGroupOwnership(player.id, sp.group, game.board))
+                .filter(sp => sp && (sp.type === 'prop' || sp.type === 'station' || sp.type === 'utility'))
                 .sort((a, b) => a.group - b.group || a.id - b.id)
 
               return (
                 <>
                   {ownedProps.length > 0 && (
-                    <div className="glass-card p-3 w-full flex flex-col gap-2 max-h-56 overflow-y-auto">
+                    <div className="glass-card p-3 w-full flex flex-col gap-1.5 max-h-64 overflow-y-auto">
                       <p className="text-bfa-gold-500 font-display text-xs tracking-wider text-center">
-                        🏗️ CONSTRUIR
+                        🏘️ TUS PROPIEDADES
                       </p>
                       {ownedProps.map(sp => {
-                        const r = canBuild(sp.id, player.id, game.board, game.players)
                         const lvl = sp.buildings ?? 0
-                        const icon = lvl >= HOTEL_LEVEL ? '🏨'
-                          : lvl > 0 ? '🏠'.repeat(lvl) : '·'
+                        const buildR     = sp.type === 'prop' ? canBuild(sp.id, player.id, game.board, game.players) : { canBuild: false }
+                        const sellR      = sp.type === 'prop' ? canSellBuilding(sp.id, player.id, game.board) : { canDo: false }
+                        const mortR      = canMortgage(sp.id, player.id, game.board)
+                        const unmortR    = canUnmortgage(sp.id, player.id, game.board, game.players)
+                        const stateIcon  = sp.mortgaged ? '🔓' : (lvl >= HOTEL_LEVEL ? '🏨' : lvl > 0 ? '🏠'.repeat(lvl) : '·')
+
                         return (
-                          <button
+                          <div
                             key={sp.id}
-                            onClick={() => {
-                              sfx.buy(); build(sp.id)
-                              if (game.educationalMode && Math.random() < 0.4) showEduTip(EDU_TIPS.build())
-                            }}
-                            disabled={!r.canBuild}
-                            className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-bfa-gold-500/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs"
-                            title={r.canBuild ? `Construir por ƒ${sp.hcost}` : (r.reason ?? '')}
+                            className={`flex flex-col gap-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 ${
+                              sp.mortgaged ? 'opacity-60' : ''
+                            }`}
                           >
-                            <span className="text-bfa-cream/80 truncate flex-1 text-left">{sp.name}</span>
-                            <span className="font-mono text-bfa-gold-500 mx-2 w-12 text-center">{icon}</span>
-                            <span className="font-mono text-bfa-cream/60">ƒ{sp.hcost}</span>
-                          </button>
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-bfa-cream/80 truncate flex-1">{sp.name}</span>
+                              <span className="font-mono text-bfa-gold-500 w-14 text-center text-[10px]">{stateIcon}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              {/* Build */}
+                              {buildR.canBuild && (
+                                <button
+                                  onClick={() => {
+                                    sfx.buy(); build(sp.id)
+                                    if (game.educationalMode && Math.random() < 0.4) showEduTip(EDU_TIPS.build())
+                                  }}
+                                  className="flex-1 px-2 py-1 rounded bg-bfa-green-500/20 hover:bg-bfa-green-500/30 text-bfa-green-300 text-[10px] font-mono"
+                                  title={`Construir por ƒ${sp.hcost}`}
+                                >
+                                  🔨 +ƒ{sp.hcost}
+                                </button>
+                              )}
+                              {/* Sell building */}
+                              {sellR.canDo && (
+                                <button
+                                  onClick={() => sellBuilding(sp.id)}
+                                  className="flex-1 px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-bfa-cream/70 text-[10px] font-mono"
+                                  title={`Vender mejora por ƒ${sellBuildingValue(sp)}`}
+                                >
+                                  💸 -ƒ{sellBuildingValue(sp)}
+                                </button>
+                              )}
+                              {/* Mortgage */}
+                              {mortR.canDo && (
+                                <button
+                                  onClick={() => mortgage(sp.id)}
+                                  className="flex-1 px-2 py-1 rounded bg-bfa-amber/15 hover:bg-bfa-amber/25 text-bfa-amber text-[10px] font-mono"
+                                  title={`Hipotecar por ƒ${mortgageValue(sp)}`}
+                                >
+                                  🏦 +ƒ{mortgageValue(sp)}
+                                </button>
+                              )}
+                              {/* Unmortgage */}
+                              {sp.mortgaged && (
+                                <button
+                                  onClick={() => unmortgage(sp.id)}
+                                  disabled={!unmortR.canDo}
+                                  className="flex-1 px-2 py-1 rounded bg-bfa-gold-500/15 hover:bg-bfa-gold-500/25 disabled:opacity-30 text-bfa-gold-500 text-[10px] font-mono"
+                                  title={`Deshipotecar por ƒ${unmortgageCost(sp)}`}
+                                >
+                                  ✅ -ƒ{unmortgageCost(sp)}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )
                       })}
                     </div>

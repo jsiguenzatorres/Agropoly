@@ -60,11 +60,25 @@ function OwnerDot({ id }: { id: number }) {
   if (!owner) return null
   const pos = getBoardPosition(id)
   const color = TOKEN_COLOR[owner.tokenId] ?? '#fff'
+  const isMortgaged = !!space.mortgaged
   return (
-    <mesh position={[pos[0], 0.13, pos[2]]}>
-      <cylinderGeometry args={[0.07, 0.07, 0.07, 8]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
-    </mesh>
+    <group>
+      <mesh position={[pos[0], 0.13, pos[2]]}>
+        <cylinderGeometry args={[0.07, 0.07, 0.07, 8]} />
+        <meshStandardMaterial
+          color={isMortgaged ? '#555' : color}
+          emissive={isMortgaged ? '#000' : color}
+          emissiveIntensity={isMortgaged ? 0 : 0.5}
+        />
+      </mesh>
+      {isMortgaged && (
+        // Red "MORTGAGED" tag floating above the tile
+        <mesh position={[pos[0], 0.30, pos[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.10, 0.16, 16]} />
+          <meshBasicMaterial color="#C0392B" transparent opacity={0.85} />
+        </mesh>
+      )}
+    </group>
   )
 }
 
