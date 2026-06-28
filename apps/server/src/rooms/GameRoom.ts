@@ -77,6 +77,13 @@ export class GameRoom extends Room<GameStateSchema> {
     this.onMessage('pass_auction',
       client => this.auctionGuard(client, () => this.passAuction())
     )
+    // Trade messages
+    this.onMessage('propose_trade', (client, msg: {
+      to: string; giveMoney: number; giveProp: number;
+      wantMoney: number; wantProp: number;
+    }) => this.tradeProposeGuard(client, () => this.proposeTrade(client.sessionId, msg)))
+    this.onMessage('accept_trade', client => this.tradeResponseGuard(client, () => this.acceptTrade()))
+    this.onMessage('reject_trade', client => this.tradeResponseGuard(client, () => this.rejectTrade()))
 
     console.log(`[GameRoom] Created — roomId=${this.roomId}`)
   }
@@ -159,6 +166,24 @@ export class GameRoom extends Room<GameStateSchema> {
     if (this.state.phase !== 'playing') return
     if (!this.state.hasAuction) return
     if (this.state.auction.currentBidderId !== client.sessionId) return
+    fn()
+  }
+
+  // Only the current player can propose, and only when not in auction/trade already
+  private tradeProposeGuard(client: Client, fn: () => void) {
+    if (this.state.phase !== 'playing') return
+    if (this.state.hasAuction || this.state.hasTradeOffer) return
+    const current = this.state.players[this.state.currentPlayerIndex]
+    if (!current || current.id !== client.sessionId) return
+    if (this.state.pending !== 'end') return  // only between rolls
+    fn()
+  }
+
+  // Only the trade recipient can accept/reject
+  private tradeResponseGuard(client: Client, fn: () => void) {
+    if (this.state.phase !== 'playing') return
+    if (!this.state.hasTradeOffer) return
+    if (this.state.tradeOffer.toId !== client.sessionId) return
     fn()
   }
 
@@ -498,6 +523,94 @@ export class GameRoom extends Room<GameStateSchema> {
     if (!space) return
     space.mortgaged = true
     player.balance += mortgageValue(board[spaceId])
+  }
+
+  private proposeTrade(fromId: string, msg: {
+    to: string; giveMoney: number; giveProp: number;
+    wantMoney: number; wantProp: number;
+  }) {
+    if (!msg || typeof msg.to !== 'string') return
+    if (msg.to === fromId) return
+    const giver = this.state.players.find((p: PlayerState) => p.id === fromId)
+    const taker = this.state.players.find((p: PlayerState) => p.id === msg.to)
+    if (!giver || !taker || giver.bankrupt || taker.bankrupt) return
+    const giveMoney = Math.max(0, Math.floor(msg.giveMoney || 0))
+    const wantMoney = Math.max(0, Math.floor(msg.wantMoney || 0))
+    if (giveMoney > giver.balance) return
+    // Validate offered property
+    if (msg.giveProp >= 0) {
+      const sp = this.state.board[msg.giveProp]
+      if (!sp || sp.ownerId !== fromId || (sp.buildings ?? 0) > 0) return
+    }
+    if (msg.wantProp >= 0) {
+      const sp = this.state.board[msg.wantProp]
+      if (!sp || sp.ownerId !== msg.to || (sp.buildings ?? 0) > 0) return
+    }
+    if (giveMoney === 0 && msg.giveProp < 0 && wantMoney === 0 && msg.wantProp < 0) return
+    this.state.tradeOffer.fromId         = fromId
+    this.state.tradeOffer.toId           = msg.to
+    this.state.tradeOffer.giveMoney      = giveMoney
+    this.state.tradeOffer.givePropertyId = msg.giveProp >= 0 ? msg.giveProp : -1
+    this.state.tradeOffer.wantMoney      = wantMoney
+    this.state.tradeOffer.wantPropertyId = msg.wantProp >= 0 ? msg.wantProp : -1
+    this.state.hasTradeOffer = true
+  }
+
+  private acceptTrade() {
+    if (!this.state.hasTradeOffer) return
+    const o = this.state.tradeOffer
+    const giver = this.state.players.find((p: PlayerState) => p.id === o.fromId)
+    const taker = this.state.players.find((p: PlayerState) => p.id === o.toId)
+    if (!giver || !taker) { this.clearTradeOffer(); return }
+    // Re-validate (state may have changed since proposal)
+    if (giver.balance < o.giveMoney || taker.balance < o.wantMoney) { this.clearTradeOffer(); return }
+    if (o.givePropertyId >= 0) {
+      const sp = this.state.board[o.givePropertyId]
+      if (!sp || sp.ownerId !== giver.id || (sp.buildings ?? 0) > 0) { this.clearTradeOffer(); return }
+    }
+    if (o.wantPropertyId >= 0) {
+      const sp = this.state.board[o.wantPropertyId]
+      if (!sp || sp.ownerId !== taker.id || (sp.buildings ?? 0) > 0) { this.clearTradeOffer(); return }
+    }
+    // Execute: money transfers
+    giver.balance -= o.giveMoney
+    taker.balance += o.giveMoney
+    taker.balance -= o.wantMoney
+    giver.balance += o.wantMoney
+    // Property transfers
+    if (o.givePropertyId >= 0) {
+      const sp = this.state.board[o.givePropertyId]
+      if (sp) {
+        sp.ownerId = taker.id
+        const gIdx = giver.properties.indexOf(o.givePropertyId)
+        if (gIdx >= 0) giver.properties.splice(gIdx, 1)
+        taker.properties.push(o.givePropertyId)
+      }
+    }
+    if (o.wantPropertyId >= 0) {
+      const sp = this.state.board[o.wantPropertyId]
+      if (sp) {
+        sp.ownerId = giver.id
+        const tIdx = taker.properties.indexOf(o.wantPropertyId)
+        if (tIdx >= 0) taker.properties.splice(tIdx, 1)
+        giver.properties.push(o.wantPropertyId)
+      }
+    }
+    this.clearTradeOffer()
+  }
+
+  private rejectTrade() {
+    this.clearTradeOffer()
+  }
+
+  private clearTradeOffer() {
+    this.state.tradeOffer.fromId         = ''
+    this.state.tradeOffer.toId           = ''
+    this.state.tradeOffer.giveMoney      = 0
+    this.state.tradeOffer.givePropertyId = -1
+    this.state.tradeOffer.wantMoney      = 0
+    this.state.tradeOffer.wantPropertyId = -1
+    this.state.hasTradeOffer = false
   }
 
   private unmortgage(spaceId: number) {

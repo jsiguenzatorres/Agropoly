@@ -8,6 +8,7 @@ import { MascotOverlay } from '../components/ui/MascotOverlay'
 import { EduTipOverlay } from '../components/ui/EduTipOverlay'
 import { VictoryScreen } from '../components/ui/VictoryScreen'
 import { QuizModal } from '../components/ui/QuizModal'
+import { TradeIncomingModal, TradeWaitingModal } from '../components/ui/TradeModal'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -16,6 +17,20 @@ function ActiveQuizModal() {
   const dismiss = useGameStore(s => s.dismissQuiz)
   if (!quiz) return null
   return <QuizModal quiz={quiz} onClose={dismiss} />
+}
+
+function ActiveTradeModal() {
+  const offer       = useMultiplayerStore(s => s.tradeOffer)
+  const mySessionId = useMultiplayerStore(s => s.mySessionId)
+  const game        = useMultiplayerStore(s => s.game)
+  if (!offer || !game) return null
+  if (offer.toId === mySessionId) {
+    return <TradeIncomingModal offer={offer} players={game.players} board={game.board} />
+  }
+  if (offer.fromId === mySessionId) {
+    return <TradeWaitingModal fromId={offer.fromId} toId={offer.toId} players={game.players} />
+  }
+  return null
 }
 
 function LoadingBoard() {
@@ -64,6 +79,7 @@ export function Component() {
         <MascotOverlay />
         <EduTipOverlay />
         <ActiveQuizModal />
+        {mode === 'multi' && <ActiveTradeModal />}
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>

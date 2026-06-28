@@ -10,6 +10,7 @@ import {
   mortgageValue, unmortgageCost, sellBuildingValue,
   HOTEL_LEVEL, AUCTION_MIN_BID,
 } from '@agropoly/game-engine'
+import { TradeComposeModal } from './TradeModal'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -75,6 +76,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const isMyTurn = mode === 'multi'
     ? !!(player && src.mySessionId && player.id === src.mySessionId)
     : !!(player && !player.isAI)
+  const [showTrade, setShowTrade] = useState(false)
 
   // SFX on game over + persist solo session to server
   useEffect(() => {
@@ -449,6 +451,14 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
                       })}
                     </div>
                   )}
+                  {mode === 'multi' && (
+                    <button
+                      onClick={() => setShowTrade(true)}
+                      className="btn-secondary w-full text-sm py-2"
+                    >
+                      💱 Proponer Trade
+                    </button>
+                  )}
                   <button onClick={endTurn} className="btn-primary w-full">
                     ✓ Terminar turno
                   </button>
@@ -466,6 +476,20 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
           </div>
         )}
       </div>
+
+      {/* Trade composer modal (multi only) */}
+      {mode === 'multi' && showTrade && player && (() => {
+        const others = game.players.filter(p => p.id !== player.id && !p.bankrupt)
+        if (others.length === 0) { setShowTrade(false); return null }
+        return (
+          <TradeComposeModal
+            me={player}
+            others={others}
+            board={game.board}
+            onClose={() => setShowTrade(false)}
+          />
+        )
+      })()}
     </>
   )
 }

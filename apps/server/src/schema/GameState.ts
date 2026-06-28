@@ -54,6 +54,15 @@ export class AuctionStateSchema extends Schema {
   @type(['string']) participants     = new ArraySchema<string>()
 }
 
+export class TradeOfferSchema extends Schema {
+  @type('string')   fromId          = ''
+  @type('string')   toId            = ''
+  @type('number')   giveMoney       = 0
+  @type('number')   givePropertyId  = -1    // -1 = no property in this slot
+  @type('number')   wantMoney       = 0
+  @type('number')   wantPropertyId  = -1
+}
+
 export class GameStateSchema extends Schema {
   @type('string')          phase              = 'waiting'    // waiting | playing | game_over
   @type('string')          pending            = 'roll'       // roll | buy | pay_rent | pay_tax | cosecha | riesgo | apply_card | jail_choice | end | game_over
@@ -70,6 +79,8 @@ export class GameStateSchema extends Schema {
   @type('boolean')         hasPendingCard     = false
   @type(AuctionStateSchema) auction           = new AuctionStateSchema()
   @type('boolean')         hasAuction         = false
+  @type(TradeOfferSchema)  tradeOffer         = new TradeOfferSchema()
+  @type('boolean')         hasTradeOffer      = false
 
   @type([PlayerState])     players            = new ArraySchema<PlayerState>()
   @type([BoardSpaceState]) board              = new ArraySchema<BoardSpaceState>()

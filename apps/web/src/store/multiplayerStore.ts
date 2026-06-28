@@ -4,6 +4,23 @@ import { BOARD_DATA } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card } from '@agropoly/game-engine'
 import type { PendingAction, AuctionState } from './gameStore'
 
+export interface TradeOffer {
+  fromId: string
+  toId: string
+  giveMoney: number
+  givePropertyId: number  // -1 = none
+  wantMoney: number
+  wantPropertyId: number  // -1 = none
+}
+
+export interface TradeProposal {
+  to: string
+  giveMoney: number
+  giveProp: number   // -1 = no property
+  wantMoney: number
+  wantProp: number
+}
+
 interface MultiplayerStore {
   room: Room | null
   mySessionId: string
@@ -19,6 +36,7 @@ interface MultiplayerStore {
   hostId: string
   isHost: boolean
   auction: AuctionState | null
+  tradeOffer: TradeOffer | null
 
   setRoom: (room: Room | null) => void
   disconnect: () => void
@@ -41,6 +59,9 @@ interface MultiplayerStore {
   unmortgage:   (spaceId: number) => void
   placeBid:     (amount: number) => void
   passAuction:  () => void
+  proposeTrade: (p: TradeProposal) => void
+  acceptTrade:  () => void
+  rejectTrade:  () => void
 }
 
 // ── Schema projection: turn an ArraySchema/MapSchema state into plain GameState shape
@@ -119,6 +140,7 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   hostId: '',
   isHost: false,
   auction: null,
+  tradeOffer: null,
 
   setRoom(room) {
     if (!room) {
@@ -143,6 +165,16 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
             participants:    Array.from(s.auction.participants as Iterable<string>),
           }
         : null
+      const tradeOffer: TradeOffer | null = s.hasTradeOffer && s.tradeOffer
+        ? {
+            fromId:         s.tradeOffer.fromId,
+            toId:           s.tradeOffer.toId,
+            giveMoney:      s.tradeOffer.giveMoney,
+            givePropertyId: s.tradeOffer.givePropertyId,
+            wantMoney:      s.tradeOffer.wantMoney,
+            wantPropertyId: s.tradeOffer.wantPropertyId,
+          }
+        : null
       set({
         game: projectGame(s),
         pending: s.pending,
@@ -153,6 +185,7 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
         hostId: s.hostId,
         isHost: s.hostId === room.sessionId,
         auction,
+        tradeOffer,
       })
     }
 
@@ -187,6 +220,9 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   unmortgage(spaceId) { get().room?.send('unmortgage', { spaceId }) },
   placeBid(amount)    { get().room?.send('place_bid', { amount }) },
   passAuction()       { get().room?.send('pass_auction') },
+  proposeTrade(p)     { get().room?.send('propose_trade', p) },
+  acceptTrade()       { get().room?.send('accept_trade') },
+  rejectTrade()       { get().room?.send('reject_trade') },
 }))
 
 if (import.meta.env.DEV) {
