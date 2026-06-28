@@ -419,6 +419,48 @@ function Board() {
   )
 }
 
+// Ambient floating gold particles — 150 small dots drifting upward, recycled.
+function AmbientParticles() {
+  const groupRef = useRef<Group>(null)
+  const count = 150
+  const positions = useMemo(() => {
+    const arr = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      arr[i * 3 + 0] = (Math.random() - 0.5) * 24
+      arr[i * 3 + 1] = Math.random() * 14 - 1
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 24
+    }
+    return arr
+  }, [count])
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return
+    const arr = (groupRef.current.children[0] as unknown as { geometry: { attributes: { position: { array: Float32Array; needsUpdate: boolean } } } })
+      .geometry.attributes.position.array
+    for (let i = 0; i < count; i++) {
+      arr[i * 3 + 1] += delta * 0.3
+      if (arr[i * 3 + 1] > 14) {
+        arr[i * 3 + 1] = -1
+        arr[i * 3 + 0] = (Math.random() - 0.5) * 24
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 24
+      }
+    }
+    ;(groupRef.current.children[0] as unknown as { geometry: { attributes: { position: { needsUpdate: boolean } } } })
+      .geometry.attributes.position.needsUpdate = true
+  })
+
+  return (
+    <group ref={groupRef}>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} args={[positions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial color="#F5C518" size={0.05} transparent opacity={0.55} sizeAttenuation />
+      </points>
+    </group>
+  )
+}
+
 function Lights() {
   return (
     <>
@@ -468,6 +510,7 @@ function Scene() {
         <AnimatedPlayerToken key={i} playerIndex={i} />
       ))}
       <Environment preset="forest" />
+      <AmbientParticles />
       <EffectComposer multisampling={0}>
         <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.4} mipmapBlur />
         <Vignette eskil={false} offset={0.15} darkness={0.55} />

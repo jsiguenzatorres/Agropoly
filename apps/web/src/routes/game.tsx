@@ -12,6 +12,8 @@ import { TradeIncomingModal, TradeWaitingModal } from '../components/ui/TradeMod
 import { AchievementToast } from '../components/ui/AchievementToast'
 import { ChatPanel } from '../components/ui/ChatPanel'
 import { ToastStack } from '../components/ui/ToastStack'
+import { LogPanel } from '../components/ui/LogPanel'
+import { LightningFlash } from '../components/ui/LightningFlash'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -86,6 +88,8 @@ export function Component() {
         {mode === 'multi' && <ChatPanel />}
         <AchievementToast />
         <ToastStack />
+        <LogPanel />
+        <LightningFlash mode={mode} />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>

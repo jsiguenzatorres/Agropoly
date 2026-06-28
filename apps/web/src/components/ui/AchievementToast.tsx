@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAchievementToastStore } from '../../store/achievementToastStore'
+import { sfx } from '../../lib/sfx'
 
 const KEYFRAMES = `
 @keyframes achievement-slide-in {
@@ -26,6 +27,7 @@ export function AchievementToast() {
   useEffect(() => {
     if (!current) return
     setExiting(false)
+    try { sfx.achievement() } catch { /* audio context may be locked */ }
     const t1 = setTimeout(() => setExiting(true), 4200)
     const t2 = setTimeout(() => { pop(); setExiting(false) }, 4700)
     return () => { clearTimeout(t1); clearTimeout(t2) }

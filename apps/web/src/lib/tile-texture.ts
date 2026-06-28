@@ -39,7 +39,7 @@ const BANNER_H    = 88    // top color banner
 const cache = new Map<number, CanvasTexture>()
 
 // Build the texture for one space id (called once per id and cached).
-export function getTileTexture(id: number, side: 'top' | 'bottom' | 'left' | 'right' | 'corner'): CanvasTexture {
+export function getTileTexture(id: number, _side: 'top' | 'bottom' | 'left' | 'right' | 'corner'): CanvasTexture {
   const cacheKey = id  // texture content doesn't change with side; rotation is applied via UVs
   const cached = cache.get(cacheKey)
   if (cached) return cached

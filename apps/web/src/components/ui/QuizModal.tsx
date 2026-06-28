@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { GLOSARIO, type QuizQuestion } from '../../lib/glosario'
 import { bumpQuizCorrect } from '../../lib/achievements'
 import { dispatchUnlock } from '../../store/achievementToastStore'
@@ -23,8 +24,10 @@ export function QuizModal({ quiz, onClose }: Props) {
   const correct = picked === quiz.correcta
 
   return (
-    <div
+    <motion.div
       onClick={onClose}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
       style={{
         position: 'fixed', inset: 0, zIndex: 80,
         background: 'rgba(0,0,0,0.7)',
@@ -33,8 +36,11 @@ export function QuizModal({ quiz, onClose }: Props) {
         padding: '24px',
       }}
     >
-      <div
+      <motion.div
         onClick={e => e.stopPropagation()}
+        initial={{ y: 30, scale: 0.92, rotateX: -10 }}
+        animate={{ y: 0,  scale: 1,    rotateX: 0   }}
+        transition={{ type: 'spring', damping: 18, stiffness: 220 }}
         style={{
           maxWidth: '480px', width: '100%',
           background: 'linear-gradient(180deg, rgba(27,107,47,0.95), rgba(13,43,20,0.95))',
@@ -43,6 +49,7 @@ export function QuizModal({ quiz, onClose }: Props) {
           padding: '24px',
           boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
           display: 'flex', flexDirection: 'column', gap: '16px',
+          transformStyle: 'preserve-3d',
         }}
       >
         <div style={{ textAlign: 'center' }}>
@@ -130,7 +137,7 @@ export function QuizModal({ quiz, onClose }: Props) {
         >
           {revealed ? 'Continuar' : 'Saltar'}
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

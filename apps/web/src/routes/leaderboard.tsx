@@ -44,8 +44,9 @@ export function Component() {
 
         {entries && entries.length > 0 && (
           <div className="glass-card overflow-hidden">
-            <div className="grid grid-cols-[40px_1fr_60px_60px_80px] sm:grid-cols-[40px_1fr_60px_60px_80px_80px_80px] gap-2 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-bfa-cream/50 border-b border-white/10 bg-white/5">
+            <div className="grid grid-cols-[40px_40px_1fr_60px_60px_80px] sm:grid-cols-[40px_40px_1fr_60px_60px_80px_80px_80px] gap-2 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-bfa-cream/50 border-b border-white/10 bg-white/5">
               <span>#</span>
+              <span></span>
               <span>Jugador</span>
               <span className="text-right">Wins</span>
               <span className="text-right">Games</span>
@@ -60,12 +61,23 @@ export function Component() {
                 return (
                   <div
                     key={e.name}
-                    className={`grid grid-cols-[40px_1fr_60px_60px_80px] sm:grid-cols-[40px_1fr_60px_60px_80px_80px_80px] gap-2 px-4 py-3 items-center text-sm transition-colors ${
+                    className={`grid grid-cols-[40px_40px_1fr_60px_60px_80px] sm:grid-cols-[40px_40px_1fr_60px_60px_80px_80px_80px] gap-2 px-4 py-3 items-center text-sm transition-colors ${
                       isTop ? 'bg-bfa-gold-500/5' : 'hover:bg-white/3'
                     }`}
                   >
                     <span className={`font-mono ${i === 0 ? 'text-bfa-gold-500 font-bold' : 'text-bfa-cream/40'}`}>
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                    </span>
+                    <span
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono"
+                      style={{
+                        background: avatarColor(e.name),
+                        color: '#FDF8EE',
+                        border: '1.5px solid rgba(245,197,24,0.4)',
+                      }}
+                      title={e.name}
+                    >
+                      {e.name.slice(0, 1).toUpperCase()}
                     </span>
                     <span className="text-bfa-cream font-bold truncate">{e.name}</span>
                     <span className="text-right font-mono text-bfa-gold-500">{e.wins}</span>
@@ -90,4 +102,12 @@ export function Component() {
       </div>
     </div>
   )
+}
+
+// Hash a name → consistent HSL color for avatar background
+function avatarColor(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  const hue = h % 360
+  return `hsl(${hue}, 55%, 32%)`
 }

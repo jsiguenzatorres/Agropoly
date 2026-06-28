@@ -122,7 +122,7 @@ export function Component() {
         {/* Logo — phase 3 */}
         {phase >= 3 && (
           <h1
-            className="font-display font-black text-[clamp(64px,16vw,120px)] leading-none tracking-[-3px]"
+            className="font-accent font-black text-[clamp(64px,16vw,120px)] leading-none tracking-[-1px]"
             style={{
               background: 'linear-gradient(90deg, #F5C518 0%, #FDF8EE 30%, #F5C518 50%, #FDF8EE 70%, #F5C518 100%)',
               backgroundSize: '200% 100%',

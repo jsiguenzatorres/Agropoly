@@ -15,6 +15,8 @@ import { TradeComposeModal } from './TradeModal'
 import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
 import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } from '../../lib/voice-command'
 import { toastMoneyIn, toastMoneyOut } from '../../store/toastStore'
+import { logEvent } from '../../store/eventLogStore'
+import { startMusic, stopMusic, setTrack, isMusicEnabled } from '../../lib/music'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -86,9 +88,50 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const [showTrade, setShowTrade] = useState(false)
   const [voiceOn, setVoiceOn] = useState(false)
   const voiceHandle = useRef<VoiceCommandHandle | null>(null)
+  const [musicOn, setMusicOn] = useState(false)
+
+  // Keyboard shortcuts: ESPACIO/R = roll, B = buy, P = pass, E = end turn, T = trade, L = log, M = mute hint
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return
+      if (e.target instanceof HTMLTextAreaElement) return
+      if (!isMyTurn) return
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'r':
+          if (pending === 'roll') { e.preventDefault(); rollDice() }
+          break
+        case 'b':
+          if (pending === 'buy') { e.preventDefault(); confirmBuy() }
+          break
+        case 'p':
+          if (pending === 'buy') { e.preventDefault(); skipBuy() }
+          break
+        case 'e':
+          if (pending === 'end') { e.preventDefault(); endTurn() }
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pending, isMyTurn]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Money toast: track human player balance delta across turns
   const humanPlayer = game?.players.find(p => mode === 'multi' ? p.id === src.mySessionId : !p.isAI)
+
+  // Music: lifecycle + adaptive track selection
+  useEffect(() => {
+    if (musicOn) startMusic().then(() => setTrack('playing'))
+    else stopMusic()
+  }, [musicOn])
+  useEffect(() => {
+    if (!isMusicEnabled()) return
+    if (pending === 'game_over') setTrack('victory')
+    else if (humanPlayer?.bankrupt) setTrack('bankrupt')
+    else if (humanPlayer && humanPlayer.balance < 300) setTrack('tension')
+    else setTrack('playing')
+  }, [pending, humanPlayer?.balance, humanPlayer?.bankrupt]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const prevBalance = useRef<number | null>(null)
   useEffect(() => {
     if (!humanPlayer) return
@@ -100,6 +143,22 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     }
     prevBalance.current = humanPlayer.balance
   }, [humanPlayer?.balance]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Event log: capture turn transitions and dice rolls
+  const lastTurnLogged = useRef<number>(-1)
+  useEffect(() => {
+    if (!game || !player) return
+    if (game.currentPlayerIndex !== lastTurnLogged.current) {
+      logEvent(`Turno de ${player.name}`, { icon: player.isAI ? '🤖' : '👤' })
+      lastTurnLogged.current = game.currentPlayerIndex
+    }
+  }, [game?.currentPlayerIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (lastDice && lastDice.d1) {
+      logEvent(`Dados: ${lastDice.d1}+${lastDice.d2}=${lastDice.d1+lastDice.d2}${lastDice.doubles ? ' 🎯' : ''}`, { icon: '🎲' })
+    }
+  }, [lastDice?.d1, lastDice?.d2]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Voice commands: lifecycle bound to voiceOn toggle
   useEffect(() => {
@@ -275,6 +334,17 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
           {voiceOn ? '🎙️ ON' : '🎙️ off'}
         </button>
       )}
+
+      {/* Music toggle */}
+      <button
+        onClick={() => setMusicOn(v => !v)}
+        className={`absolute top-12 left-20 sm:top-4 sm:left-[340px] z-20 glass-card px-2 py-1 text-[10px] sm:text-xs font-mono transition-all ${
+          musicOn ? 'border-bfa-gold-500/60 text-bfa-gold-500 bg-bfa-gold-500/10' : 'text-bfa-cream/50'
+        }`}
+        title="Música ambiental adaptativa"
+      >
+        {musicOn ? '🎵 ON' : '🎵 off'}
+      </button>
 
       {/* Dice + climate display — top right (smaller on mobile) */}
       {lastDice && (

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import type { Mood } from '../../lib/mascot-dialogues'
+import { sfx } from '../../lib/sfx'
 
 // ─── Bubble pop keyframe ───────────────────────────────────────────────────────
 const BUBBLE_POP = `
@@ -456,6 +457,18 @@ function LaTormentaSVG({ mood }: { mood: Mood }) {
 
 // ─── Speech bubble ─────────────────────────────────────────────────────────────
 function SpeechBubble({ text, tailRight }: { text: string; tailRight: boolean }) {
+  const [shown, setShown] = useState('')
+  useEffect(() => {
+    setShown('')
+    let i = 0
+    const tick = setInterval(() => {
+      i++
+      setShown(text.slice(0, i))
+      if (i >= text.length) clearInterval(tick)
+    }, 22)
+    return () => clearInterval(tick)
+  }, [text])
+
   return (
     <>
       <style>{BUBBLE_POP}</style>
@@ -480,7 +493,7 @@ function SpeechBubble({ text, tailRight }: { text: string; tailRight: boolean })
           lineHeight: 1.4,
           margin: 0,
           fontFamily: 'system-ui, sans-serif',
-        }}>{text}</p>
+        }}>{shown}{shown.length < text.length && <span className="opacity-40">▎</span>}</p>
       </div>
       {/* Tail */}
       <div style={{
@@ -522,6 +535,18 @@ export function MascotOverlay() {
 
     setShown(false)        // reset to hidden first
     setLine(mascot)        // update content
+    // Per-mascot SFX cue
+    try {
+      const cues: Record<string, () => void> = {
+        la_vaquita:  sfx.mascotVaquita,
+        don_fomento: sfx.mascotDonFomento,
+        maicita:     sfx.mascotMaicita,
+        la_tormenta: sfx.mascotTormenta,
+        don_cafe:    sfx.mascotDonCafe,
+        la_canche:   sfx.mascotCanche,
+      }
+      cues[mascot.id]?.()
+    } catch { /* audio context may be locked */ }
 
     // one frame later: trigger CSS transition into view
     timers.current.push(setTimeout(() => setShown(true), 20))
