@@ -14,6 +14,7 @@ import {
 import { TradeComposeModal } from './TradeModal'
 import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
 import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } from '../../lib/voice-command'
+import { toastMoneyIn, toastMoneyOut } from '../../store/toastStore'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -85,6 +86,20 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const [showTrade, setShowTrade] = useState(false)
   const [voiceOn, setVoiceOn] = useState(false)
   const voiceHandle = useRef<VoiceCommandHandle | null>(null)
+
+  // Money toast: track human player balance delta across turns
+  const humanPlayer = game?.players.find(p => mode === 'multi' ? p.id === src.mySessionId : !p.isAI)
+  const prevBalance = useRef<number | null>(null)
+  useEffect(() => {
+    if (!humanPlayer) return
+    const prev = prevBalance.current
+    if (prev !== null && humanPlayer.balance !== prev) {
+      const delta = humanPlayer.balance - prev
+      if (delta > 0) toastMoneyIn(delta)
+      else if (delta < 0) toastMoneyOut(-delta)
+    }
+    prevBalance.current = humanPlayer.balance
+  }, [humanPlayer?.balance]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Voice commands: lifecycle bound to voiceOn toggle
   useEffect(() => {

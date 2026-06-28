@@ -1,5 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Environment } from '@react-three/drei'
+import { OrbitControls, Environment, Text } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
 import { BOARD_DATA } from '@agropoly/game-engine'
@@ -10,6 +11,7 @@ import {
 import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-positions'
 import { sfx } from '../../lib/sfx'
 import { getTileTexture } from '../../lib/tile-texture'
+import { getCenterMapTexture } from '../../lib/es-map-texture'
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -366,6 +368,7 @@ function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
 // ─── Board & Lights ───────────────────────────────────────────────────────────
 
 function Board() {
+  const mapTex = useMemo(() => getCenterMapTexture(), [])
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -380,6 +383,38 @@ function Board() {
         <planeGeometry args={[7.1, 7.1]} />
         <meshStandardMaterial color="#111F13" roughness={0.95} />
       </mesh>
+      {/* Center: El Salvador map overlay */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <planeGeometry args={[6.4, 6.4]} />
+        <meshStandardMaterial map={mapTex} transparent opacity={0.85} roughness={1} />
+      </mesh>
+      {/* AGROPOLY text floating subtly above center */}
+      <Text
+        position={[0, 0.05, -2.6]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={0.55}
+        color="#F5C518"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.04}
+        outlineWidth={0.012}
+        outlineColor="#0D2B14"
+      >
+        AGROPOLY
+      </Text>
+      <Text
+        position={[0, 0.05, 2.7]}
+        rotation={[-Math.PI / 2, 0, Math.PI]}
+        fontSize={0.32}
+        color="#F5C518"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.15}
+        outlineWidth={0.008}
+        outlineColor="#0D2B14"
+      >
+        BFA · EL SALVADOR
+      </Text>
     </>
   )
 }
@@ -433,6 +468,11 @@ function Scene() {
         <AnimatedPlayerToken key={i} playerIndex={i} />
       ))}
       <Environment preset="forest" />
+      <EffectComposer multisampling={0}>
+        <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.4} mipmapBlur />
+        <Vignette eskil={false} offset={0.15} darkness={0.55} />
+        <SMAA />
+      </EffectComposer>
       <OrbitControls enablePan={false} minDistance={4} maxDistance={18}
         maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
     </>

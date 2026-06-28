@@ -11,6 +11,7 @@ import { QuizModal } from '../components/ui/QuizModal'
 import { TradeIncomingModal, TradeWaitingModal } from '../components/ui/TradeModal'
 import { AchievementToast } from '../components/ui/AchievementToast'
 import { ChatPanel } from '../components/ui/ChatPanel'
+import { ToastStack } from '../components/ui/ToastStack'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -84,6 +85,7 @@ export function Component() {
         {mode === 'multi' && <ActiveTradeModal />}
         {mode === 'multi' && <ChatPanel />}
         <AchievementToast />
+        <ToastStack />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>
