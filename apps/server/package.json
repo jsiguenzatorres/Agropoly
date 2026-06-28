@@ -17,6 +17,7 @@
     "@colyseus/schema": "^2.0.37",
     "@hono/node-server": "^1.13.0",
     "@supabase/supabase-js": "^2.46.1",
+    "better-sqlite3": "^12.11.1",
     "bullmq": "^5.28.2",
     "colyseus": "^0.15.0",
     "elevenlabs": "^1.8.0",
@@ -24,6 +25,7 @@
     "ioredis": "^5.4.1"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0"

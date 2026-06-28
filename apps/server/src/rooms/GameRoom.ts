@@ -1,14 +1,15 @@
 import { Room, Client } from 'colyseus'
 import {
   BOARD_DATA, STARTING_BALANCE, GO_AMOUNT,
-  JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS,
-  calcRent, canBuild,
+  JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS, HOTEL_LEVEL,
+  calcRent, canBuild, getNetWorth,
   shuffle, COSECHA_DECK, RIESGO_DECK,
 } from '@agropoly/game-engine'
 import type { Card } from '@agropoly/game-engine'
 import {
   GameStateSchema, PlayerState, BoardSpaceState,
 } from '../schema/GameState'
+import { saveSession } from '../db'
 
 const rollD6 = () => Math.floor(Math.random() * 6) + 1
 
@@ -20,6 +21,8 @@ interface JoinOptions {
 
 export class GameRoom extends Room<GameStateSchema> {
   maxClients = 6
+  private startedAt = 0
+  private persisted = false
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -35,6 +38,7 @@ export class GameRoom extends Room<GameStateSchema> {
       this.state.phase = 'playing'
       this.state.pending = 'roll'
       this.state.currentPlayerIndex = 0
+      this.startedAt = Date.now()
     })
 
     this.onMessage('roll_dice',     client => this.guard(client, () => this.rollDice()))
@@ -384,6 +388,7 @@ export class GameRoom extends Room<GameStateSchema> {
       this.state.winnerId = alive[0]?.id ?? ''
       this.state.phase = 'game_over'
       this.state.pending = 'game_over'
+      this.persistFinalSession()
       return
     }
     const doubles = this.state.lastDice.doubles
@@ -416,6 +421,63 @@ export class GameRoom extends Room<GameStateSchema> {
       this.state.winnerId = alive[0]?.id ?? ''
       this.state.phase = 'game_over'
       this.state.pending = 'game_over'
+      this.persistFinalSession()
+    }
+  }
+
+  private persistFinalSession() {
+    if (this.persisted) return
+    this.persisted = true
+    try {
+      const board = this.toEngineBoard()
+      const winner = this.state.players.find((p: PlayerState) => p.id === this.state.winnerId)
+      const stats = this.state.players.map((p: PlayerState) => {
+        let properties = 0, houses = 0, hotels = 0
+        board.forEach(sp => {
+          if (sp.ownerId !== p.id) return
+          properties++
+          const lvl = sp.buildings ?? 0
+          if (lvl >= HOTEL_LEVEL) hotels++
+          else if (lvl > 0) houses += lvl
+        })
+        const enginePlayer = {
+          ...p, properties: Array.from(p.properties).filter((n): n is number => typeof n === 'number'),
+          tokenId: p.tokenId as never, difficulty: p.difficulty as never,
+        }
+        return {
+          player: p,
+          netWorth: getNetWorth(enginePlayer, board),
+          properties, houses, hotels,
+        }
+      }).sort((a, b) => b.netWorth - a.netWorth)
+
+      saveSession({
+        session: {
+          id:              this.roomId,
+          startedAt:       this.startedAt || Date.now(),
+          endedAt:         Date.now(),
+          mode:            'multi',
+          educationalMode: this.state.educationalMode,
+          turnCount:       this.state.turnCount,
+          winnerName:      winner?.name ?? null,
+        },
+        results: stats.map((s, i) => ({
+          rank:          i + 1,
+          name:          s.player.name,
+          tokenId:       s.player.tokenId,
+          isAI:          s.player.isAI,
+          balanceFinal:  s.player.balance,
+          netWorthFinal: s.netWorth,
+          properties:    s.properties,
+          houses:        s.houses,
+          hotels:        s.hotels,
+          bankrupt:      s.player.bankrupt,
+          isWinner:      s.player.id === this.state.winnerId,
+        })),
+      })
+      console.log(`[GameRoom] Session ${this.roomId} persisted (winner: ${winner?.name ?? '—'})`)
+    } catch (e) {
+      console.error('[GameRoom] Failed to persist session:', e)
     }
   }
 

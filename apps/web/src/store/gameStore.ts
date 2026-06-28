@@ -25,6 +25,8 @@ export interface PlayerSetup {
 interface GameStore {
   game: GameState | null
   gameId: number          // increments on initGame so tokens reset visual pos
+  sessionId: string       // unique per partida — used as DB primary key
+  startedAt: number       // ms epoch when initGame was called
   isMoving: boolean       // true while token animation plays
   pending: PendingAction
   lastDice: { d1: number; d2: number; doubles: boolean } | null
@@ -98,6 +100,8 @@ export const useGameStore = create<GameStore>()(
   immer((set) => ({
     game: null,
     gameId: 0,
+    sessionId: '',
+    startedAt: 0,
     isMoving: false,
     mascot: null,
     mascotSeq: 0,
@@ -134,6 +138,8 @@ export const useGameStore = create<GameStore>()(
       set(s => {
         s.game = game
         s.gameId++
+        s.sessionId = `solo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+        s.startedAt = Date.now()
         s.isMoving = false
         s.pending = 'roll'
         s.lastDice = null

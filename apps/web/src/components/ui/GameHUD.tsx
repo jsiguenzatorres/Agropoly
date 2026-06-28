@@ -4,6 +4,7 @@ import { useGameSource } from '../../store/useGameSource'
 import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
 import { EDU_TIPS } from '../../lib/edu-tips'
+import { postSoloSession } from '../../lib/sessions-api'
 import { canBuild, checkGroupOwnership, HOTEL_LEVEL } from '@agropoly/game-engine'
 
 const GROUP_NAMES: Record<number, string> = {
@@ -36,8 +37,17 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     ? !!(player && src.mySessionId && player.id === src.mySessionId)
     : !!(player && !player.isAI)
 
-  // SFX on game over
-  useEffect(() => { if (pending === 'game_over') sfx.win() }, [pending])
+  // SFX on game over + persist solo session to server
+  useEffect(() => {
+    if (pending !== 'game_over') return
+    sfx.win()
+    if (mode === 'solo') {
+      const s = useGameStore.getState()
+      if (s.game && s.sessionId) {
+        postSoloSession(s.game, s.sessionId, s.startedAt)
+      }
+    }
+  }, [pending, mode])
 
   // Mascot trigger — fires whenever pending action or active player changes
   useEffect(() => {

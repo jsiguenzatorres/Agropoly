@@ -39,6 +39,9 @@ export function Component() {
           <button className="btn-gold text-center" onClick={() => navigate('/lobby')}>
             Nueva Partida
           </button>
+          <button className="btn-secondary text-center" onClick={() => navigate('/leaderboard')}>
+            🏆 Leaderboard
+          </button>
           <button className="btn-secondary text-center" onClick={() => navigate('/dashboard')}>
             Dashboard Analytics
           </button>

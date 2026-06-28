@@ -34,6 +34,10 @@ const router = createBrowserRouter([
     path: '/dashboard',
     lazy: () => import('./routes/dashboard'),
   },
+  {
+    path: '/leaderboard',
+    lazy: () => import('./routes/leaderboard'),
+  },
 ])
 
 createRoot(document.getElementById('root')!).render(
