@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tokens, type TokenId } from '../lib/design-tokens'
 import { useGameStore, type PlayerSetup } from '../store/gameStore'
 import { useMultiplayerStore } from '../store/multiplayerStore'
 import { createRoom, joinRoomById } from '../lib/colyseus'
+import { shouldOfferTutorial, markTutorialOffered } from '../lib/stats'
+import { TutorialModal } from '../components/ui/TutorialModal'
 
 const TOKENS: { id: TokenId; label: string }[] = [
   { id: 'maiz',    label: 'La Mazorca' },
@@ -32,6 +34,15 @@ export function Component() {
   const [roomCode, setRoomCode] = useState('')
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showTutorial, setShowTutorial] = useState(false)
+
+  // Offer the tutorial automatically after the user has lost 3 games in a row
+  useEffect(() => {
+    if (shouldOfferTutorial()) {
+      setShowTutorial(true)
+      markTutorialOffered()
+    }
+  }, [])
 
   function handleStartSolo() {
     const humanSetup: PlayerSetup = { name: name.trim(), tokenId: token, isAI: false, difficulty: 'easy' }
@@ -199,6 +210,7 @@ export function Component() {
           </div>
         )}
       </div>
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
     </div>
   )
 }

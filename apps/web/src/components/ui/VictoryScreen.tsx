@@ -5,6 +5,7 @@ import type { Player, BoardSpace } from '@agropoly/game-engine'
 import { useGameStore } from '../../store/gameStore'
 import { useMultiplayerStore } from '../../store/multiplayerStore'
 import { GLOSARIO } from '../../lib/glosario'
+import { recordResult } from '../../lib/stats'
 
 const TOKEN_EMOJI: Record<string, string> = {
   maiz: '🌽', cafe: '☕', vaca: '🐄', tractor: '🚜', milpa: '🌿', pez: '🐟',
@@ -114,6 +115,18 @@ export function VictoryScreen({ mode }: { mode: 'solo' | 'multi' }) {
     const t = setTimeout(() => setShow(true), 50)
     return () => clearTimeout(t)
   }, [isOver])
+
+  // Record local stats for adaptive onboarding (solo mode only; multi handled server-side)
+  const myId = useMultiplayerStore.getState().mySessionId
+  useEffect(() => {
+    if (!isOver || !game) return
+    const winnerId = game.winner ?? null
+    const humanPlayer = mode === 'solo'
+      ? game.players.find(p => !p.isAI)
+      : game.players.find(p => p.id === myId)
+    if (!humanPlayer) return
+    recordResult(humanPlayer.id === winnerId)
+  }, [isOver, game?.winner]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo<PlayerStats[]>(() => {
     if (!game) return []

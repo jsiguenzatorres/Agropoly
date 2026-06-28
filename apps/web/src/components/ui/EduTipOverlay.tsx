@@ -19,10 +19,11 @@ export function EduTipOverlay() {
     setTip(eduTip)
 
     timers.current.push(setTimeout(() => setShown(true), 20))
+    // 8s window — gives time to read the BFA lesson before pressing the action button
     timers.current.push(setTimeout(() => {
       setShown(false)
       timers.current.push(setTimeout(() => dismissEduTip(), 450))
-    }, 6000))
+    }, 8000))
 
     return clearAll
   }, [eduTipSeq]) // eslint-disable-line react-hooks/exhaustive-deps

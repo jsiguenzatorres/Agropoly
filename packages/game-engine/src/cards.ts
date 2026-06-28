@@ -17,6 +17,14 @@ export const COSECHA_DECK: Card[] = [
   { id: 'c14', type: 'cosecha', icon: '🧾', title: 'Auditoría imprevista',      text: 'Pagos atrasados al fisco. Paga ƒ75.',                               effect: { action: 'pay', amount: 75 } },
   { id: 'c15', type: 'cosecha', icon: '🌺', title: 'Premio agroturismo',        text: 'Tu finca ganó reconocimiento. Cobra ƒ100.',                         effect: { action: 'collect', amount: 100 } },
   { id: 'c16', type: 'cosecha', icon: '🏦', title: 'Pago de deuda',             text: 'Liquidaste el crédito. Paga ƒ100.',                                 effect: { action: 'pay', amount: 100 } },
+  { id: 'c17', type: 'cosecha', icon: '☕', title: 'Premio Cup of Excellence',   text: 'Tu café fue elegido entre los mejores. Cobra ƒ300.',                effect: { action: 'collect', amount: 300 } },
+  { id: 'c18', type: 'cosecha', icon: '🤝', title: 'Convenio cooperativa',       text: 'Mejores precios por volumen. Cobra ƒ80.',                           effect: { action: 'collect', amount: 80 } },
+  { id: 'c19', type: 'cosecha', icon: '💧', title: 'Sistema de riego nuevo',     text: 'Instalación financiada BFA. Paga ƒ200.',                            effect: { action: 'pay', amount: 200 } },
+  { id: 'c20', type: 'cosecha', icon: '🌽', title: 'Cosecha récord de maíz',     text: 'El mejor año de tu carrera. Cobra ƒ250.',                           effect: { action: 'collect', amount: 250 } },
+  { id: 'c21', type: 'cosecha', icon: '🏘️', title: 'Reparación de infraestructura', text: 'Mantenimiento de propiedades. Paga ƒ40 por PA y ƒ100 por Centro.', effect: { action: 'pay_per_building', house: 40, hotel: 100 } },
+  { id: 'c22', type: 'cosecha', icon: '🌿', title: 'Bono cosecha orgánica',      text: 'Certificación premium. Cobra ƒ125.',                                effect: { action: 'collect', amount: 125 } },
+  { id: 'c23', type: 'cosecha', icon: '📋', title: 'Asesoría técnica BFA',       text: 'Consultoría especializada. Paga ƒ60.',                              effect: { action: 'pay', amount: 60 } },
+  { id: 'c24', type: 'cosecha', icon: '🎁', title: 'Bono navideño',              text: 'Aguinaldo del BFA. Cobra ƒ150.',                                    effect: { action: 'collect', amount: 150 } },
 ]
 
 export const RIESGO_DECK: Card[] = [
@@ -36,6 +44,14 @@ export const RIESGO_DECK: Card[] = [
   { id: 'r14', type: 'riesgo', icon: '🛂', title: 'Inspección sanitaria BFA',   text: 'Todo en orden. Cobra ƒ50.',                                        effect: { action: 'collect', amount: 50 } },
   { id: 'r15', type: 'riesgo', icon: '🐝', title: 'Mortandad de abejas',        text: 'Afecta polinización. Paga ƒ80.',                                   effect: { action: 'pay', amount: 80 } },
   { id: 'r16', type: 'riesgo', icon: '🚚', title: 'Venta directa al mercado',   text: 'Evitaste intermediarios. Cobra ƒ120.',                             effect: { action: 'collect', amount: 120 } },
+  { id: 'r17', type: 'riesgo', icon: '🌪', title: 'Tornado en la zona',          text: 'Daños severos a tu propiedad. Paga ƒ250.',                          effect: { action: 'pay', amount: 250 } },
+  { id: 'r18', type: 'riesgo', icon: '🦠', title: 'Brote viral en ganado',       text: 'Cuarentena obligatoria. Paga ƒ175.',                                effect: { action: 'pay', amount: 175 } },
+  { id: 'r19', type: 'riesgo', icon: '🛣', title: 'Camino bloqueado',            text: 'Retrocede 3 casillas.',                                             effect: { action: 'move_relative', steps: -3 } },
+  { id: 'r20', type: 'riesgo', icon: '🌫', title: 'Niebla densa en cosecha',     text: 'Atraso en transporte. Paga ƒ60.',                                   effect: { action: 'pay', amount: 60 } },
+  { id: 'r21', type: 'riesgo', icon: '🏪', title: 'Robo en bodega',              text: 'Pérdida de inventario. Paga ƒ110.',                                 effect: { action: 'pay', amount: 110 } },
+  { id: 'r22', type: 'riesgo', icon: '🚨', title: 'Restructuración de deuda',    text: 'Banco te otorga mejores condiciones. Cobra ƒ75.',                   effect: { action: 'collect', amount: 75 } },
+  { id: 'r23', type: 'riesgo', icon: '🧊', title: 'Helada inesperada',           text: 'Daño a cultivos tempranos. Paga ƒ140.',                             effect: { action: 'pay', amount: 140 } },
+  { id: 'r24', type: 'riesgo', icon: '💼', title: 'Inversor extranjero',         text: 'Interés en tu finca. Cobra ƒ200 de cada jugador.',                  effect: { action: 'collect_from_players', amount: 50 } },
 ]
 
 export function shuffle<T>(deck: T[]): T[] {
