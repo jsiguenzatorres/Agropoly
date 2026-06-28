@@ -99,13 +99,21 @@ export function Component() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-          <div>
-            <h1 className="font-display font-bold text-2xl sm:text-3xl text-bfa-gold-500">
-              📊 Dashboard Analytics
-            </h1>
-            <p className="text-bfa-cream/50 mt-1 font-mono text-xs sm:text-sm">
-              BFA · AGROPOLY — Métricas en tiempo real
-            </p>
+          <div className="flex items-center gap-4">
+            <img
+              src="/logo-bfa.png"
+              alt="BFA"
+              className="h-12 sm:h-14 w-auto shrink-0"
+              style={{ filter: 'drop-shadow(0 2px 8px rgba(245,197,24,0.2))' }}
+            />
+            <div>
+              <h1 className="font-display font-bold text-2xl sm:text-3xl text-bfa-gold-500">
+                Dashboard Analytics
+              </h1>
+              <p className="text-bfa-cream/50 mt-1 font-mono text-xs sm:text-sm">
+                AGROPOLY — Métricas en tiempo real
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link to="/lobby" className="btn-secondary text-xs px-3 py-2">← Volver</Link>

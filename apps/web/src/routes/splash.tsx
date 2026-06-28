@@ -107,15 +107,23 @@ export function Component() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(46,139,74,0.3)_0%,transparent_70%)]" />
 
       <div className="relative z-10 flex flex-col items-center gap-6">
-        {/* Badge — phase 2 */}
+        {/* BFA logo — phase 2 */}
         {phase >= 2 && (
           <div
-            className="bg-bfa-gold-500/10 border border-bfa-gold-500/40 text-bfa-gold-500 font-mono text-[10px] tracking-[4px] uppercase px-5 py-2 rounded-full"
+            className="flex flex-col items-center gap-2"
             style={{
               animation: 'splash-rise 0.7s cubic-bezier(0.34,1.56,0.64,1) both, splash-pulse-badge 3s ease-in-out infinite 1s',
             }}
           >
-            Banco de Fomento Agropecuario · Est. 1973
+            <img
+              src="/logo-bfa.png"
+              alt="Banco de Fomento Agropecuario"
+              className="h-16 sm:h-20 w-auto"
+              style={{ filter: 'drop-shadow(0 6px 24px rgba(245,197,24,0.3))' }}
+            />
+            <p className="text-bfa-gold-500/70 font-mono text-[10px] tracking-[4px] uppercase">
+              Est. 1973 · El Salvador
+            </p>
           </div>
         )}
 

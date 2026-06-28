@@ -186,14 +186,24 @@ function TitleScene() {
   }, [])
   return (
     <div style={{ textAlign: 'center', animation: 'intro-fade-in 0.6s ease' }}>
+      <img
+        src="/logo-bfa.png"
+        alt="Banco de Fomento Agropecuario"
+        style={{
+          height: 'clamp(60px, 8vw, 96px)',
+          width: 'auto',
+          marginBottom: '4px',
+          filter: 'drop-shadow(0 6px 20px rgba(245,197,24,0.3))',
+        }}
+      />
       <p style={{
         color: 'rgba(245,232,200,0.55)',
-        fontSize: '13px',
+        fontSize: '11px',
         fontFamily: 'monospace',
         letterSpacing: '0.4em',
         margin: 0,
       }}>
-        BANCO DE FOMENTO AGROPECUARIO · 1973
+        EST. 1973 · EL SALVADOR
       </p>
       <h1 style={{
         color: '#F5C518',
@@ -245,21 +255,20 @@ function PlayerScene({ scene }: { scene: Extract<Scene, { kind: 'player' }> }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px',
       maxWidth: '600px', padding: '0 24px', textAlign: 'center',
     }}>
-      {/* BFA header */}
+      {/* BFA header — real logo with subtle pulsing border */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(245,197,24,0.18), rgba(245,197,24,0.06))',
+        background: 'linear-gradient(135deg, rgba(245,197,24,0.14), rgba(245,197,24,0.04))',
         border: '2px solid rgba(245,197,24,0.55)',
         borderRadius: '12px',
-        padding: '8px 18px',
+        padding: '8px 22px',
         animation: 'intro-bfa-pulse 2.2s ease-in-out infinite',
+        display: 'flex', alignItems: 'center',
       }}>
-        <p style={{
-          color: '#F5C518', fontFamily: 'monospace',
-          fontSize: '11px', letterSpacing: '0.3em',
-          margin: 0,
-        }}>
-          🏦 BANCO DE FOMENTO AGROPECUARIO
-        </p>
+        <img
+          src="/logo-bfa.png"
+          alt="BFA"
+          style={{ height: '34px', width: 'auto', display: 'block' }}
+        />
       </div>
 
       {/* Token + name */}
