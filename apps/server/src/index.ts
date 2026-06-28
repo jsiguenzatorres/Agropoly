@@ -4,6 +4,9 @@ import { logger } from 'hono/logger'
 import { serve } from '@hono/node-server'
 import { Server } from 'colyseus'
 import type { Server as HttpServer } from 'http'
+import { initSentry } from './lib/sentry'
+
+initSentry()
 import voiceRoutes       from './api/voice'
 import educationRoutes   from './api/education'
 import leaderboardRoutes from './api/leaderboard'
