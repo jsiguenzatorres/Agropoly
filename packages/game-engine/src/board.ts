@@ -96,3 +96,20 @@ export const HOTEL_LEVEL = 5
 export const WEALTH_VICTORY = 5000
 // Minimum auction bid increment
 export const AUCTION_MIN_BID = 10
+
+// ─── Climate die (4-sided) ──────────────────────────────────────────────────
+// Affects the cash amount of any Cosecha card with action 'collect' picked this turn.
+export type ClimateFace = 'sol' | 'lluvia' | 'tormenta' | 'arcoiris'
+
+export const CLIMATE_FACES: ClimateFace[] = ['sol', 'lluvia', 'tormenta', 'arcoiris']
+
+export const CLIMATE_INFO: Record<ClimateFace, { emoji: string; label: string; multiplier: number }> = {
+  sol:      { emoji: '☀️', label: 'Sol',      multiplier: 1.25 },
+  lluvia:   { emoji: '🌧',  label: 'Lluvia',   multiplier: 1.5  },
+  tormenta: { emoji: '⛈',  label: 'Tormenta', multiplier: 0.5  },
+  arcoiris: { emoji: '🌈', label: 'Arcoíris', multiplier: 2.0  },
+}
+
+export function rollClimate(): ClimateFace {
+  return CLIMATE_FACES[Math.floor(Math.random() * CLIMATE_FACES.length)]
+}

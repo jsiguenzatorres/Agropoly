@@ -57,11 +57,12 @@ interface MultiplayerStore {
   sellBuilding: (spaceId: number) => void
   mortgage:     (spaceId: number) => void
   unmortgage:   (spaceId: number) => void
-  placeBid:     (amount: number) => void
-  passAuction:  () => void
-  proposeTrade: (p: TradeProposal) => void
-  acceptTrade:  () => void
-  rejectTrade:  () => void
+  placeBid:        (amount: number) => void
+  passAuction:     () => void
+  proposeTrade:    (p: TradeProposal) => void
+  acceptTrade:     () => void
+  rejectTrade:     () => void
+  useJailFreeCard: () => void
 }
 
 // ── Schema projection: turn an ArraySchema/MapSchema state into plain GameState shape
@@ -108,6 +109,7 @@ function projectGame(roomState: any): GameState {
     logEntries: [],
     educationalMode: roomState.educationalMode,
     winner: roomState.winnerId || null,
+    climate: roomState.climate as GameState['climate'],
   }
 }
 
@@ -223,6 +225,7 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   proposeTrade(p)     { get().room?.send('propose_trade', p) },
   acceptTrade()       { get().room?.send('accept_trade') },
   rejectTrade()       { get().room?.send('reject_trade') },
+  useJailFreeCard()   { get().room?.send('use_jail_card') },
 }))
 
 if (import.meta.env.DEV) {

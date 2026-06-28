@@ -76,6 +76,7 @@ export interface GameState {
   logEntries: LogEntry[]
   educationalMode: boolean
   winner: string | null
+  climate?: 'sol' | 'lluvia' | 'tormenta' | 'arcoiris'  // current climate, refreshed each rollDice
 }
 
 export interface LogEntry {

@@ -81,6 +81,7 @@ export class GameStateSchema extends Schema {
   @type('boolean')         hasAuction         = false
   @type(TradeOfferSchema)  tradeOffer         = new TradeOfferSchema()
   @type('boolean')         hasTradeOffer      = false
+  @type('string')          climate            = 'sol'   // sol | lluvia | tormenta | arcoiris
 
   @type([PlayerState])     players            = new ArraySchema<PlayerState>()
   @type([BoardSpaceState]) board              = new ArraySchema<BoardSpaceState>()

@@ -6,6 +6,7 @@ import {
   calcRent, canBuild, canMortgage, canUnmortgage, canSellBuilding,
   mortgageValue, unmortgageCost, sellBuildingValue, getNetWorth,
   shuffle, COSECHA_DECK, RIESGO_DECK,
+  rollClimate, CLIMATE_INFO,
 } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
 import type { MascotLine } from '../lib/mascot-dialogues'
@@ -79,6 +80,7 @@ interface GameStore {
   unmortgage: (spaceId: number) => void
   placeBid: (amount: number) => void
   passAuction: () => void
+  useJailFreeCard: () => void
   reset: () => void
 }
 
@@ -107,6 +109,34 @@ function rollD6() { return Math.floor(Math.random() * 6) + 1 }
 
 function activePlayers(players: Player[]) {
   return players.filter(p => !p.bankrupt)
+}
+
+// Transfer all of `debtor`'s assets when going bankrupt.
+// If creditor is provided: properties (post-improvement-sale) move to creditor; the
+// creditor also receives the proceeds of selling improvements back to the bank at 50% hcost.
+// If no creditor (tax / card): properties return to bank (ownerId=null), improvements lost.
+function liquidatePlayer(debtor: Player, board: BoardSpace[], creditor: Player | null) {
+  for (const propId of debtor.properties) {
+    const sp = board[propId]
+    if (!sp) continue
+    const lvl = sp.buildings ?? 0
+    if (lvl > 0 && creditor) {
+      // Sell improvements back to the bank, credit the creditor
+      const refund = (lvl >= 5 ? 5 : lvl) * Math.floor(sp.hcost * 0.5)
+      creditor.balance += refund
+    }
+    sp.buildings = 0
+    sp.mortgaged = false
+    if (creditor) {
+      sp.ownerId = creditor.id
+      creditor.properties.push(propId)
+    } else {
+      sp.ownerId = null
+    }
+  }
+  debtor.properties = []
+  debtor.balance = 0
+  debtor.bankrupt = true
 }
 
 function nextPlayerIndex(game: GameState): number {
@@ -198,6 +228,7 @@ export const useGameStore = create<GameStore>()(
         const doubles = d1 === d2
         const total = d1 + d2
         s.lastDice = { d1, d2, doubles }
+        s.game.climate = rollClimate()
 
         if (doubles) {
           s.game.doublesCount++
@@ -372,10 +403,15 @@ export const useGameStore = create<GameStore>()(
         const player = s.game.players[s.game.currentPlayerIndex]
         const space = s.game.board[player.position]
         const amount = s.pendingAmount
-        player.balance -= amount
-        if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
         const owner = s.game.players.find(p => p.id === space?.ownerId)
-        if (owner) owner.balance += amount
+        if (player.balance >= amount) {
+          player.balance -= amount
+          if (owner) owner.balance += amount
+        } else {
+          // Pay what we can, then liquidate to the creditor
+          if (owner) owner.balance += player.balance
+          liquidatePlayer(player, s.game.board, owner ?? null)
+        }
         s.pendingAmount = 0
         s.pending = 'end'
       })
@@ -385,8 +421,11 @@ export const useGameStore = create<GameStore>()(
       set(s => {
         if (!s.game) return
         const player = s.game.players[s.game.currentPlayerIndex]
-        player.balance -= s.pendingAmount
-        if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
+        if (player.balance >= s.pendingAmount) {
+          player.balance -= s.pendingAmount
+        } else {
+          liquidatePlayer(player, s.game.board, null)
+        }
         s.pendingAmount = 0
         s.pending = 'end'
       })
@@ -420,12 +459,18 @@ export const useGameStore = create<GameStore>()(
         const effect = s.pendingCard.effect
 
         switch (effect.action) {
-          case 'collect':
-            player.balance += effect.amount
+          case 'collect': {
+            // Climate die modifies Cosecha collects only
+            const isCosechaCard = s.pendingCard?.type === 'cosecha'
+            const mult = isCosechaCard && s.game.climate
+              ? CLIMATE_INFO[s.game.climate].multiplier
+              : 1
+            player.balance += Math.round(effect.amount * mult)
             break
+          }
           case 'pay':
-            player.balance -= effect.amount
-            if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
+            if (player.balance >= effect.amount) player.balance -= effect.amount
+            else liquidatePlayer(player, s.game.board, null)
             break
           case 'move':
             player.position = effect.to
@@ -444,24 +489,28 @@ export const useGameStore = create<GameStore>()(
           case 'collect_from_players':
             s.game.players.forEach(p => {
               if (p.id !== player.id && !p.bankrupt) {
-                const pay = Math.min(p.balance, effect.amount)
-                p.balance -= pay
-                player.balance += pay
+                if (p.balance >= effect.amount) {
+                  p.balance -= effect.amount
+                  player.balance += effect.amount
+                } else {
+                  player.balance += p.balance
+                  liquidatePlayer(p, s.game!.board, player)
+                }
               }
             })
             break
-          case 'pay_per_building':
+          case 'pay_per_building': {
+            let total = 0
             s.game.board.forEach(sp => {
               if (sp.ownerId === player.id && (sp.buildings ?? 0) > 0) {
                 const buildings = sp.buildings ?? 0
-                const cost = buildings < 5
-                  ? buildings * effect.house
-                  : effect.hotel
-                player.balance -= cost
+                total += buildings < 5 ? buildings * effect.house : effect.hotel
               }
             })
-            if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
+            if (player.balance >= total) player.balance -= total
+            else liquidatePlayer(player, s.game.board, null)
             break
+          }
         }
         s.pendingCard = null
         s.pending = 'end'
@@ -473,6 +522,18 @@ export const useGameStore = create<GameStore>()(
         if (!s.game) return
         const player = s.game.players[s.game.currentPlayerIndex]
         player.balance -= JAIL_FINE
+        player.jailed = false
+        player.jailTurns = 0
+        s.pending = 'roll'
+      })
+    },
+
+    useJailFreeCard() {
+      set(s => {
+        if (!s.game) return
+        const player = s.game.players[s.game.currentPlayerIndex]
+        if (!player || !player.jailed || player.jailFreeCards <= 0) return
+        player.jailFreeCards--
         player.jailed = false
         player.jailTurns = 0
         s.pending = 'roll'

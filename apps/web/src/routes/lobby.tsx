@@ -36,6 +36,8 @@ export function Component() {
   function handleStartSolo() {
     const humanSetup: PlayerSetup = { name: name.trim(), tokenId: token, isAI: false, difficulty: 'easy' }
     const usedTokens = new Set([token])
+    // Mix of difficulties for variety: rotate easy → hard → expert across AI slots
+    const difficulties: Array<'easy' | 'hard' | 'expert'> = ['easy', 'hard', 'expert']
     const aiSetups: PlayerSetup[] = Array.from({ length: aiCount }, (_, i) => {
       const aiToken = AI_TOKENS.find(t => !usedTokens.has(t)) ?? AI_TOKENS[i % AI_TOKENS.length]
       usedTokens.add(aiToken)
@@ -43,7 +45,7 @@ export function Component() {
         name: AI_NAMES[i] ?? `IA ${i + 1}`,
         tokenId: aiToken,
         isAI: true,
-        difficulty: i === 0 ? 'hard' : 'easy',
+        difficulty: difficulties[i % difficulties.length],
       }
     })
     initGame([humanSetup, ...aiSetups], eduMode)

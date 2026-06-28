@@ -30,10 +30,11 @@ export interface GameSource {
   sellBuilding: (spaceId: number) => void
   mortgage:     (spaceId: number) => void
   unmortgage:   (spaceId: number) => void
-  placeBid:     (amount: number) => void
-  passAuction:  () => void
-  auction:      AuctionState | null
-  reset:        () => void
+  placeBid:        (amount: number) => void
+  passAuction:     () => void
+  auction:         AuctionState | null
+  useJailFreeCard: () => void
+  reset:           () => void
 }
 
 export function useGameSource(mode: 'solo' | 'multi'): GameSource {
@@ -65,10 +66,11 @@ export function useGameSource(mode: 'solo' | 'multi'): GameSource {
       sellBuilding:  multi.sellBuilding,
       mortgage:      multi.mortgage,
       unmortgage:    multi.unmortgage,
-      placeBid:      multi.placeBid,
-      passAuction:   multi.passAuction,
-      auction:       multi.auction,
-      reset:         multi.disconnect,
+      placeBid:        multi.placeBid,
+      passAuction:     multi.passAuction,
+      auction:         multi.auction,
+      useJailFreeCard: multi.useJailFreeCard,
+      reset:           multi.disconnect,
     }
   }
   return {
@@ -93,9 +95,10 @@ export function useGameSource(mode: 'solo' | 'multi'): GameSource {
     sellBuilding:  solo.sellBuilding,
     mortgage:      solo.mortgage,
     unmortgage:    solo.unmortgage,
-    placeBid:      solo.placeBid,
-    passAuction:   solo.passAuction,
-    auction:       solo.auction,
-    reset:         solo.reset,
+    placeBid:        solo.placeBid,
+    passAuction:     solo.passAuction,
+    auction:         solo.auction,
+    useJailFreeCard: solo.useJailFreeCard,
+    reset:           solo.reset,
   }
 }

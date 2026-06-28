@@ -6,6 +6,7 @@ import {
   canMortgage, canUnmortgage, canSellBuilding,
   mortgageValue, unmortgageCost, sellBuildingValue,
   shuffle, COSECHA_DECK, RIESGO_DECK,
+  rollClimate, CLIMATE_INFO,
 } from '@agropoly/game-engine'
 import type { Card } from '@agropoly/game-engine'
 import {
@@ -51,6 +52,7 @@ export class GameRoom extends Room<GameStateSchema> {
     this.onMessage('draw_card',     client => this.guard(client, () => this.drawCard()))
     this.onMessage('apply_card',    client => this.guard(client, () => this.applyCard()))
     this.onMessage('pay_jail_fine', client => this.guard(client, () => this.payJailFine()))
+    this.onMessage('use_jail_card', client => this.guard(client, () => this.useJailFreeCard()))
     this.onMessage('roll_for_jail', client => this.guard(client, () => this.rollForJail()))
     this.onMessage('end_turn',      client => this.guard(client, () => this.endTurn()))
     this.onMessage('build',
@@ -187,6 +189,32 @@ export class GameRoom extends Room<GameStateSchema> {
     fn()
   }
 
+  // ── Liquidation: assets transfer on bankruptcy ─────────────────────────────
+  // If creditor provided, properties + sold-improvement refund go to them; otherwise to bank.
+  private liquidatePlayer(debtor: PlayerState, creditor: PlayerState | null) {
+    const propIds = Array.from(debtor.properties).filter((n): n is number => typeof n === 'number')
+    for (const propId of propIds) {
+      const sp = this.state.board[propId]
+      if (!sp) continue
+      const lvl = sp.buildings ?? 0
+      if (lvl > 0 && creditor) {
+        const refund = (lvl >= 5 ? 5 : lvl) * Math.floor(sp.hcost * 0.5)
+        creditor.balance += refund
+      }
+      sp.buildings = 0
+      sp.mortgaged = false
+      if (creditor) {
+        sp.ownerId = creditor.id
+        creditor.properties.push(propId)
+      } else {
+        sp.ownerId = ''
+      }
+    }
+    debtor.properties.clear()
+    debtor.balance = 0
+    debtor.bankrupt = true
+  }
+
   // ── Turn actions (ported from gameStore.ts) ────────────────────────────────
 
   private rollDice() {
@@ -200,6 +228,7 @@ export class GameRoom extends Room<GameStateSchema> {
     this.state.lastDice.d1 = d1
     this.state.lastDice.d2 = d2
     this.state.lastDice.doubles = doubles
+    this.state.climate = rollClimate()
 
     if (doubles) {
       this.state.doublesCount++
@@ -366,10 +395,14 @@ export class GameRoom extends Room<GameStateSchema> {
     if (!player) return
     const space = this.state.board[player.position]
     const amount = this.state.pendingAmount
-    player.balance -= amount
-    if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
-    const owner = this.state.players.find((p: PlayerState) => p.id === space?.ownerId)
-    if (owner) owner.balance += amount
+    const owner = this.state.players.find((p: PlayerState) => p.id === space?.ownerId) ?? null
+    if (player.balance >= amount) {
+      player.balance -= amount
+      if (owner) owner.balance += amount
+    } else {
+      if (owner) owner.balance += player.balance
+      this.liquidatePlayer(player, owner)
+    }
     this.state.pendingAmount = 0
     this.state.pending = 'end'
   }
@@ -377,8 +410,8 @@ export class GameRoom extends Room<GameStateSchema> {
   private confirmTax() {
     const player = this.state.players[this.state.currentPlayerIndex]
     if (!player) return
-    player.balance -= this.state.pendingAmount
-    if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
+    if (player.balance >= this.state.pendingAmount) player.balance -= this.state.pendingAmount
+    else this.liquidatePlayer(player, null)
     this.state.pendingAmount = 0
     this.state.pending = 'end'
   }
@@ -408,12 +441,17 @@ export class GameRoom extends Room<GameStateSchema> {
     const effect = JSON.parse(this.state.pendingCard.effectJson) as Card['effect']
 
     switch (effect.action) {
-      case 'collect':
-        player.balance += effect.amount
+      case 'collect': {
+        const isCosechaCard = this.state.pendingCard.type === 'cosecha'
+        const mult = isCosechaCard
+          ? (CLIMATE_INFO[this.state.climate as keyof typeof CLIMATE_INFO]?.multiplier ?? 1)
+          : 1
+        player.balance += Math.round(effect.amount * mult)
         break
+      }
       case 'pay':
-        player.balance -= effect.amount
-        if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
+        if (player.balance >= effect.amount) player.balance -= effect.amount
+        else this.liquidatePlayer(player, null)
         break
       case 'move':
         player.position = effect.to
@@ -431,24 +469,27 @@ export class GameRoom extends Room<GameStateSchema> {
         break
       case 'collect_from_players':
         this.state.players.forEach((p: PlayerState) => {
-          if (p.id !== player.id && !p.bankrupt) {
-            const pay = Math.min(p.balance, effect.amount)
-            p.balance -= pay
-            player.balance += pay
+          if (p.id === player.id || p.bankrupt) return
+          if (p.balance >= effect.amount) {
+            p.balance -= effect.amount
+            player.balance += effect.amount
+          } else {
+            player.balance += p.balance
+            this.liquidatePlayer(p, player)
           }
         })
         break
-      case 'pay_per_building':
+      case 'pay_per_building': {
+        let total = 0
         this.state.board.forEach((sp: BoardSpaceState) => {
           if (sp.ownerId === player.id && sp.buildings > 0) {
-            const cost = sp.buildings < 5
-              ? sp.buildings * effect.house
-              : effect.hotel
-            player.balance -= cost
+            total += sp.buildings < 5 ? sp.buildings * effect.house : effect.hotel
           }
         })
-        if (player.balance < 0) { player.bankrupt = true; player.balance = 0 }
+        if (player.balance >= total) player.balance -= total
+        else this.liquidatePlayer(player, null)
         break
+      }
     }
     this.state.hasPendingCard = false
     this.state.pendingCard.id = ''
@@ -459,6 +500,15 @@ export class GameRoom extends Room<GameStateSchema> {
     const player = this.state.players[this.state.currentPlayerIndex]
     if (!player || player.balance < JAIL_FINE) return
     player.balance -= JAIL_FINE
+    player.jailed = false
+    player.jailTurns = 0
+    this.state.pending = 'roll'
+  }
+
+  private useJailFreeCard() {
+    const player = this.state.players[this.state.currentPlayerIndex]
+    if (!player || !player.jailed || player.jailFreeCards <= 0) return
+    player.jailFreeCards--
     player.jailed = false
     player.jailTurns = 0
     this.state.pending = 'roll'

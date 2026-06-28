@@ -8,9 +8,10 @@ import { postSoloSession } from '../../lib/sessions-api'
 import {
   canBuild, canMortgage, canUnmortgage, canSellBuilding,
   mortgageValue, unmortgageCost, sellBuildingValue,
-  HOTEL_LEVEL, AUCTION_MIN_BID,
+  HOTEL_LEVEL, AUCTION_MIN_BID, CLIMATE_INFO,
 } from '@agropoly/game-engine'
 import { TradeComposeModal } from './TradeModal'
+import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -65,6 +66,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     drawCard, applyCard, payJailFine, rollForJail, endTurn,
     build, sellBuilding, mortgage, unmortgage,
     placeBid, passAuction, auction,
+    useJailFreeCard,
   } = src
   // Mascot/EduTip state lives only in the local gameStore — both modes use it
   const showMascot = useGameStore(s => s.showMascot)
@@ -146,27 +148,23 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     const t = setTimeout(() => {
       const space = game.board[player.position]
       if      (pending === 'roll')       rollDice()
-      else if (pending === 'buy')        player.balance >= (space?.price ?? Infinity) ? confirmBuy() : skipBuy()
+      else if (pending === 'buy')        space && aiShouldBuy(player, space, game.board) ? confirmBuy() : skipBuy()
       else if (pending === 'pay_rent')   confirmRent()
       else if (pending === 'pay_tax')    confirmTax()
       else if (pending === 'cosecha' || pending === 'riesgo') drawCard()
       else if (pending === 'apply_card') applyCard()
-      else if (pending === 'jail_choice') player.jailFreeCards > 0 ? payJailFine() : rollForJail()
+      else if (pending === 'jail_choice') player.jailFreeCards > 0 ? useJailFreeCard() : rollForJail()
       else if (pending === 'end') {
-        // AI greedy build: keep reserve of 200 ƒ, build cheapest available property first
-        // Loop until no more builds possible (each build mutates state, so re-query store)
+        // Difficulty-aware build loop (uses aiBuildPicks). Re-query store after each build.
         let safety = 20
         while (safety-- > 0) {
           const { game: g } = useGameStore.getState()
           if (!g) break
           const p = g.players[g.currentPlayerIndex]
           if (!p) break
-          const buildable = p.properties
-            .map(id => g.board[id])
-            .filter(sp => canBuild(sp.id, p.id, g.board, g.players).canBuild)
-            .sort((a, b) => a.hcost - b.hcost)
-          if (!buildable.length || p.balance - buildable[0].hcost < 200) break
-          build(buildable[0].id)
+          const picks = aiBuildPicks(p, g.board, g.players)
+          if (picks.length === 0) break
+          build(picks[0])
         }
         endTurn()
       }
@@ -175,6 +173,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   }, [pending, game?.currentPlayerIndex, isMoving]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI auction bidder — solo mode only. Triggers whenever the bidder changes.
+  // Uses difficulty-aware aiAuctionBid (easy=conservative, hard=normal, expert=aggressive on completing groups).
   useEffect(() => {
     if (mode !== 'solo') return
     if (!game || !auction || pending !== 'auction') return
@@ -183,9 +182,8 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     const space = game.board[auction.spaceId]
     if (!space) return
     const t = setTimeout(() => {
-      const nextBid = auction.currentBid + AUCTION_MIN_BID
-      const cap = Math.floor(space.price * 0.8)
-      if (nextBid <= cap && nextBid <= bidder.balance * 0.7) placeBid(nextBid)
+      const bid = aiAuctionBid(bidder, space, auction.currentBid, game.board)
+      if (bid !== null) placeBid(bid)
       else passAuction()
     }, 700)
     return () => clearTimeout(t)
@@ -210,22 +208,33 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
             } ${p.bankrupt ? 'line-through opacity-20' : ''}`}
           >
             <span className="font-mono text-bfa-gold-500 font-bold max-w-[60px] sm:w-20 truncate">{p.name}</span>
+            {p.isAI && (
+              <span className="text-[8px] sm:text-[9px] font-mono text-bfa-cream/40 uppercase">
+                {p.difficulty === 'easy' ? 'EZ' : p.difficulty === 'hard' ? 'HARD' : 'EXP'}
+              </span>
+            )}
             <span className="text-bfa-cream/70 whitespace-nowrap">ƒ{p.balance}</span>
             {p.jailed && <span title="En Emergencia">🔒</span>}
           </div>
         ))}
       </div>
 
-      {/* Dice display — top right (smaller on mobile) */}
+      {/* Dice + climate display — top right (smaller on mobile) */}
       {lastDice && (
         <div className="absolute top-12 right-2 sm:top-4 sm:right-4 glass-card px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center gap-0.5 sm:gap-1 z-20">
-          <div className="flex gap-1 sm:gap-2">
+          <div className="flex gap-1 sm:gap-2 items-center">
             <Die value={lastDice.d1} />
             <Die value={lastDice.d2} />
+            {game.climate && (
+              <span className="text-2xl sm:text-3xl ml-1" title={`${CLIMATE_INFO[game.climate].label} · cosechas ×${CLIMATE_INFO[game.climate].multiplier}`}>
+                {CLIMATE_INFO[game.climate].emoji}
+              </span>
+            )}
           </div>
           <p className="font-mono text-bfa-gold-500 text-[10px] sm:text-xs">
             = {lastDice.d1 + lastDice.d2}
             {lastDice.doubles && ' 🎯'}
+            {game.climate && ` · ${CLIMATE_INFO[game.climate].label} ×${CLIMATE_INFO[game.climate].multiplier}`}
           </p>
         </div>
       )}
@@ -352,6 +361,14 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
 
             {pending === 'jail_choice' && (
               <>
+                {player.jailFreeCards > 0 && (
+                  <button
+                    onClick={() => { sfx.jail(); useJailFreeCard() }}
+                    className="btn-gold w-full"
+                  >
+                    🎟️ Usar Carta Libre ({player.jailFreeCards})
+                  </button>
+                )}
                 <button
                   onClick={() => { sfx.jail(); payJailFine() }}
                   disabled={player.balance < 50}
