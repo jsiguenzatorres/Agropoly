@@ -6,6 +6,7 @@ import { GameModeProvider } from '../store/GameModeContext'
 import { GameHUD } from '../components/ui/GameHUD'
 import { MascotOverlay } from '../components/ui/MascotOverlay'
 import { EduTipOverlay } from '../components/ui/EduTipOverlay'
+import { VictoryScreen } from '../components/ui/VictoryScreen'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -50,6 +51,7 @@ export function Component() {
         <GameHUD mode={mode} />
         <MascotOverlay />
         <EduTipOverlay />
+        <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>
   )

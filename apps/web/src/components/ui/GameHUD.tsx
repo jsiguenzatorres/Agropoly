@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useGameSource } from '../../store/useGameSource'
-import { useNavigate } from 'react-router-dom'
 import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
 import { EDU_TIPS } from '../../lib/edu-tips'
@@ -24,12 +23,11 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const src = useGameSource(mode)
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
-    drawCard, applyCard, payJailFine, rollForJail, endTurn, reset, build,
+    drawCard, applyCard, payJailFine, rollForJail, endTurn, build,
   } = src
   // Mascot/EduTip state lives only in the local gameStore — both modes use it
   const showMascot = useGameStore(s => s.showMascot)
   const showEduTip = useGameStore(s => s.showEduTip)
-  const navigate = useNavigate()
 
   const player = game?.players[game?.currentPlayerIndex ?? 0] ?? null
   const locked = isMoving
@@ -119,7 +117,6 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
 
   if (!game || !player) return null
   const space = game.board[player.position]
-  const alive = game.players.filter(p => !p.bankrupt)
 
   const isHuman = isMyTurn
 
@@ -296,16 +293,6 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
               )
             })()}
 
-            {pending === 'game_over' && (
-              <div className="glass-card p-4 w-full flex flex-col gap-3 text-center">
-                <p className="text-bfa-gold-500 font-display font-bold text-lg">
-                  🏆 {alive[0]?.name ?? '—'} ganó!
-                </p>
-                <button onClick={() => { reset(); navigate('/') }} className="btn-gold w-full">
-                  Volver al inicio
-                </button>
-              </div>
-            )}
           </div>
         )}
 
