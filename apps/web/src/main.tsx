@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import { initSentry } from './lib/sentry'
+import './lib/speech'   // initialize __speech debug global
 import './index.css'
 
 initSentry()

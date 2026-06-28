@@ -3,6 +3,7 @@
 // than English narration of Spanish text).
 
 let cachedVoice: SpeechSynthesisVoice | null = null
+let fallbackVoice: SpeechSynthesisVoice | null = null
 let probed = false
 
 // Priority list — Salvadoran first, then geographically/linguistically closest variants.
@@ -37,11 +38,16 @@ function probe() {
     return
   }
   cachedVoice = pickSpanishVoice(voices)
+  // Last-resort fallback: pick the system default voice (likely English) so users hear *something*
+  // instead of silence. Preferable for diagnostic + accessibility even if it sounds wrong.
+  fallbackVoice = voices.find(v => v.default) ?? voices[0] ?? null
   probed = true
   if (cachedVoice) {
     console.info(`[speech] Spanish voice: ${cachedVoice.name} (${cachedVoice.lang})`)
+  } else if (fallbackVoice) {
+    console.warn(`[speech] No Spanish voice installed. Falling back to "${fallbackVoice.name}" (${fallbackVoice.lang}) — accent will be wrong but narration will be audible.`)
   } else {
-    console.warn('[speech] No Spanish voice installed — speech disabled to avoid English narration of Spanish text.')
+    console.warn('[speech] No voices available at all — speech disabled.')
   }
 }
 
@@ -57,12 +63,15 @@ export function hasSpanishVoice(): boolean {
 export function speak(text: string, opts?: { rate?: number; pitch?: number; volume?: number }) {
   if (!isSpeechSupported()) return
   probe()
-  // No Spanish voice on this device → silence (don't synthesize Spanish text with an English voice)
-  if (!cachedVoice) return
+  // Prefer Spanish voice; fall back to the system default so users still hear narration
+  const voice = cachedVoice ?? fallbackVoice
+  if (!voice) return
   window.speechSynthesis.cancel()
   const utter = new SpeechSynthesisUtterance(text)
-  utter.voice = cachedVoice
-  utter.lang  = cachedVoice.lang
+  utter.voice = voice
+  // Force es-* lang on the utterance even when the voice is English — helps engines
+  // that respect the lang hint over the assigned voice, and signals SSML/captions correctly.
+  utter.lang = cachedVoice ? cachedVoice.lang : 'es-419'
   utter.rate   = opts?.rate   ?? 1.0
   utter.pitch  = opts?.pitch  ?? 1.05
   utter.volume = opts?.volume ?? 0.85
@@ -79,4 +88,21 @@ export function listVoices() {
   if (!isSpeechSupported()) return
   const voices = window.speechSynthesis.getVoices()
   console.table(voices.map(v => ({ name: v.name, lang: v.lang, default: v.default, localService: v.localService })))
+}
+
+// Expose to window in dev for quick console diagnosis: `__speech.test()` or `__speech.list()`
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  ;(window as unknown as { __speech: object }).__speech = {
+    test: () => speak('Hola, soy la voz del Banco de Fomento Agropecuario.'),
+    list: listVoices,
+    has:  hasSpanishVoice,
+    current: () => {
+      probe()
+      return cachedVoice
+        ? { active: cachedVoice.name, lang: cachedVoice.lang, isSpanish: true }
+        : fallbackVoice
+        ? { active: fallbackVoice.name, lang: fallbackVoice.lang, isSpanish: false, note: 'fallback — no Spanish voice installed' }
+        : { active: null, note: 'no voices at all' }
+    },
+  }
 }
