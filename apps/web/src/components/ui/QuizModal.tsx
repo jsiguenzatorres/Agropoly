@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { GLOSARIO, type QuizQuestion } from '../../lib/glosario'
+import { bumpQuizCorrect } from '../../lib/achievements'
+import { dispatchUnlock } from '../../store/achievementToastStore'
 
 interface Props {
   quiz: QuizQuestion
@@ -15,6 +17,7 @@ export function QuizModal({ quiz, onClose }: Props) {
     if (revealed) return
     setPicked(i)
     setReveal(true)
+    if (i === quiz.correcta) dispatchUnlock(bumpQuizCorrect())
   }
 
   const correct = picked === quiz.correcta

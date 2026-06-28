@@ -9,6 +9,7 @@ import { EduTipOverlay } from '../components/ui/EduTipOverlay'
 import { VictoryScreen } from '../components/ui/VictoryScreen'
 import { QuizModal } from '../components/ui/QuizModal'
 import { TradeIncomingModal, TradeWaitingModal } from '../components/ui/TradeModal'
+import { AchievementToast } from '../components/ui/AchievementToast'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -80,6 +81,7 @@ export function Component() {
         <EduTipOverlay />
         <ActiveQuizModal />
         {mode === 'multi' && <ActiveTradeModal />}
+        <AchievementToast />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>

@@ -6,6 +6,8 @@ import { useGameStore } from '../../store/gameStore'
 import { useMultiplayerStore } from '../../store/multiplayerStore'
 import { GLOSARIO } from '../../lib/glosario'
 import { recordResult } from '../../lib/stats'
+import { checkGameEndUnlocks } from '../../lib/achievements'
+import { dispatchUnlocks } from '../../store/achievementToastStore'
 
 const TOKEN_EMOJI: Record<string, string> = {
   maiz: '🌽', cafe: '☕', vaca: '🐄', tractor: '🚜', milpa: '🌿', pez: '🐟',
@@ -125,7 +127,18 @@ export function VictoryScreen({ mode }: { mode: 'solo' | 'multi' }) {
       ? game.players.find(p => !p.isAI)
       : game.players.find(p => p.id === myId)
     if (!humanPlayer) return
-    recordResult(humanPlayer.id === winnerId)
+    const isWinner = humanPlayer.id === winnerId
+    recordResult(isWinner)
+    // Achievement end-of-game checks
+    const myStats = stats.find(s => s.player.id === humanPlayer.id)
+    if (myStats) {
+      const wasMortgaged = game.board.some(sp => sp.ownerId === humanPlayer.id && sp.mortgaged)
+      const unlocks = checkGameEndUnlocks({
+        isWinner, netWorth: myStats.netWorth,
+        wasMortgaged, hadEduMode: !!game.educationalMode,
+      })
+      dispatchUnlocks(unlocks)
+    }
   }, [isOver, game?.winner]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo<PlayerStats[]>(() => {

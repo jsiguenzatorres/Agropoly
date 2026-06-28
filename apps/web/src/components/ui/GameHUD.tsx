@@ -12,6 +12,7 @@ import {
 } from '@agropoly/game-engine'
 import { TradeComposeModal } from './TradeModal'
 import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
+import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } from '../../lib/voice-command'
 
 const GROUP_NAMES: Record<number, string> = {
   0: 'Occidente I', 1: 'Occidente II', 2: 'Centro Norte',
@@ -79,6 +80,24 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     ? !!(player && src.mySessionId && player.id === src.mySessionId)
     : !!(player && !player.isAI)
   const [showTrade, setShowTrade] = useState(false)
+  const [voiceOn, setVoiceOn] = useState(false)
+  const voiceHandle = useRef<VoiceCommandHandle | null>(null)
+
+  // Voice commands: lifecycle bound to voiceOn toggle
+  useEffect(() => {
+    if (!voiceOn) {
+      voiceHandle.current?.stop(); voiceHandle.current = null
+      return
+    }
+    voiceHandle.current = startVoiceCommands(intent => {
+      const s = src
+      if (intent === 'roll' && s.pending === 'roll')   s.rollDice()
+      else if (intent === 'end'  && s.pending === 'end')  s.endTurn()
+      else if (intent === 'buy'  && s.pending === 'buy')  s.confirmBuy()
+      else if (intent === 'pass' && s.pending === 'buy')  s.skipBuy()
+    })
+    return () => { voiceHandle.current?.stop(); voiceHandle.current = null }
+  }, [voiceOn]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // SFX on game over + persist solo session to server
   useEffect(() => {
@@ -218,6 +237,19 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
           </div>
         ))}
       </div>
+
+      {/* Voice toggle — top left below scoreboard on mobile, hidden if not supported */}
+      {isVoiceCommandSupported() && (
+        <button
+          onClick={() => setVoiceOn(v => !v)}
+          className={`absolute top-12 left-2 sm:top-4 sm:left-72 z-20 glass-card px-2 py-1 text-[10px] sm:text-xs font-mono transition-all ${
+            voiceOn ? 'border-bfa-gold-500/60 text-bfa-gold-500 bg-bfa-gold-500/10 animate-pulse' : 'text-bfa-cream/50'
+          }`}
+          title='Comandos: "lanzar dados", "comprar", "pasar", "terminar turno"'
+        >
+          {voiceOn ? '🎙️ ON' : '🎙️ off'}
+        </button>
+      )}
 
       {/* Dice + climate display — top right (smaller on mobile) */}
       {lastDice && (

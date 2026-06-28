@@ -12,6 +12,8 @@ import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@
 import type { MascotLine } from '../lib/mascot-dialogues'
 import type { EduTip } from '../lib/edu-tips'
 import { quizForCardType, type QuizQuestion } from '../lib/glosario'
+import { unlockFirstProperty, unlockGroupComplete, bumpHotel } from '../lib/achievements'
+import { dispatchUnlock } from './achievementToastStore'
 
 export type PendingAction =
   | 'roll' | 'buy' | 'pay_rent' | 'pay_tax'
@@ -317,6 +319,8 @@ export const useGameStore = create<GameStore>()(
     },
 
     confirmBuy() {
+      let unlockedFirst = false
+      let completedGroup: number | null = null
       set(s => {
         if (!s.game) return
         const player = s.game.players[s.game.currentPlayerIndex]
@@ -326,7 +330,16 @@ export const useGameStore = create<GameStore>()(
         space.ownerId = player.id
         player.properties.push(space.id)
         s.pending = 'end'
+        if (!player.isAI) {
+          if (player.properties.length === 1) unlockedFirst = true
+          if (space.type === 'prop') {
+            const groupProps = s.game.board.filter(sp => sp.group === space.group && sp.type === 'prop')
+            if (groupProps.every(sp => sp.ownerId === player.id)) completedGroup = space.group
+          }
+        }
       })
+      if (unlockedFirst) dispatchUnlock(unlockFirstProperty())
+      if (completedGroup !== null) dispatchUnlock(unlockGroupComplete(completedGroup))
     },
 
     skipBuy() {
@@ -565,6 +578,8 @@ export const useGameStore = create<GameStore>()(
     },
 
     build(spaceId) {
+      let hotelBuilt = false
+      let byHuman = false
       set(s => {
         if (!s.game) return
         const player = s.game.players[s.game.currentPlayerIndex]
@@ -575,7 +590,9 @@ export const useGameStore = create<GameStore>()(
         if (!space) return
         player.balance -= space.hcost
         space.buildings = (space.buildings ?? 0) + 1
+        if (space.buildings === 5) { hotelBuilt = true; byHuman = !player.isAI }
       })
+      if (hotelBuilt && byHuman) dispatchUnlock(bumpHotel())
     },
 
     sellBuilding(spaceId) {

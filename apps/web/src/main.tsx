@@ -38,6 +38,10 @@ const router = createBrowserRouter([
     path: '/leaderboard',
     lazy: () => import('./routes/leaderboard'),
   },
+  {
+    path: '/achievements',
+    lazy: () => import('./routes/achievements'),
+  },
 ])
 
 createRoot(document.getElementById('root')!).render(
