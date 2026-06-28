@@ -122,40 +122,40 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
 
   return (
     <>
-      {/* Scoreboard — top left */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
+      {/* Scoreboard — top: column on desktop, horizontal scroll on mobile */}
+      <div className="absolute top-2 left-2 right-2 sm:right-auto sm:top-4 sm:left-4 flex flex-row sm:flex-col gap-1.5 sm:gap-2 z-20 overflow-x-auto sm:overflow-visible scrollbar-hide">
         {game.players.map((p, i) => (
           <div
             key={p.id}
-            className={`glass-card px-3 py-1.5 flex items-center gap-2 text-xs transition-all ${
+            className={`glass-card px-2.5 py-1 sm:px-3 sm:py-1.5 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs transition-all shrink-0 ${
               i === game.currentPlayerIndex
                 ? 'border-bfa-gold-500/60 bg-bfa-gold-500/10'
                 : 'opacity-50'
             } ${p.bankrupt ? 'line-through opacity-20' : ''}`}
           >
-            <span className="font-mono text-bfa-gold-500 font-bold w-20 truncate">{p.name}</span>
-            <span className="text-bfa-cream/70">ƒ{p.balance}</span>
+            <span className="font-mono text-bfa-gold-500 font-bold max-w-[60px] sm:w-20 truncate">{p.name}</span>
+            <span className="text-bfa-cream/70 whitespace-nowrap">ƒ{p.balance}</span>
             {p.jailed && <span title="En Emergencia">🔒</span>}
           </div>
         ))}
       </div>
 
-      {/* Dice display — top right */}
+      {/* Dice display — top right (smaller on mobile) */}
       {lastDice && (
-        <div className="absolute top-4 right-4 glass-card px-4 py-3 flex flex-col items-center gap-1 z-20">
-          <div className="flex gap-2">
+        <div className="absolute top-12 right-2 sm:top-4 sm:right-4 glass-card px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center gap-0.5 sm:gap-1 z-20">
+          <div className="flex gap-1 sm:gap-2">
             <Die value={lastDice.d1} />
             <Die value={lastDice.d2} />
           </div>
-          <p className="font-mono text-bfa-gold-500 text-xs">
+          <p className="font-mono text-bfa-gold-500 text-[10px] sm:text-xs">
             = {lastDice.d1 + lastDice.d2}
-            {lastDice.doubles && ' 🎯 Dobles'}
+            {lastDice.doubles && ' 🎯'}
           </p>
         </div>
       )}
 
       {/* Action panel — bottom center */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3 w-full max-w-sm px-4">
+      <div className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 sm:gap-3 w-full max-w-sm px-3 sm:px-4">
 
         {/* Space info */}
         {space && (

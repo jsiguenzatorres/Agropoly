@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { Group } from 'three'
@@ -366,10 +366,33 @@ function Lights() {
 
 // ─── Scene ────────────────────────────────────────────────────────────────────
 
+function ResponsiveCamera() {
+  const { camera, size } = useThree()
+  useEffect(() => {
+    const isPortrait = size.width < size.height
+    const isMobile   = size.width < 640
+    if (isPortrait || isMobile) {
+      // Tight overhead framing for portrait — board fills most of the screen
+      camera.position.set(0, 8, 6)
+      if ('fov' in camera) {
+        ;(camera as { fov: number }).fov = 78
+      }
+    } else {
+      camera.position.set(0, 9, 9)
+      if ('fov' in camera) {
+        ;(camera as { fov: number }).fov = 48
+      }
+    }
+    if ('updateProjectionMatrix' in camera) (camera as { updateProjectionMatrix: () => void }).updateProjectionMatrix()
+  }, [camera, size.width, size.height])
+  return null
+}
+
 function Scene() {
   const game = useActiveGame()
   return (
     <>
+      <ResponsiveCamera />
       <Lights />
       <Board />
       {BOARD_DATA.map(s => <BoardTile  key={s.id}        id={s.id} />)}
@@ -379,7 +402,7 @@ function Scene() {
         <AnimatedPlayerToken key={i} playerIndex={i} />
       ))}
       <Environment preset="forest" />
-      <OrbitControls enablePan={false} minDistance={4} maxDistance={16}
+      <OrbitControls enablePan={false} minDistance={4} maxDistance={18}
         maxPolarAngle={Math.PI / 2.1} target={[0, 0, 0]} />
     </>
   )

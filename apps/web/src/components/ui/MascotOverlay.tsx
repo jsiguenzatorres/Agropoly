@@ -360,14 +360,17 @@ export function MascotOverlay() {
       >
         {/* Inner: idle bob animation — separate from the entry transform */}
         <div style={{
-          display: 'flex', alignItems: 'flex-end', gap: '10px',
+          display: 'flex', alignItems: 'flex-end', gap: '8px',
           flexDirection: isRight ? 'row-reverse' : 'row',
           animation: shown ? 'mascot-idle 3s ease-in-out infinite 0.55s' : 'none',
         }}>
-          {line.id === 'don_fomento'
-            ? <DonFomentoSVG mood={line.mood} />
-            : <MaicitaSVG    mood={line.mood} />
-          }
+          {/* Mascot SVG scaled down on small viewports */}
+          <div className="origin-bottom scale-[0.65] sm:scale-100">
+            {line.id === 'don_fomento'
+              ? <DonFomentoSVG mood={line.mood} />
+              : <MaicitaSVG    mood={line.mood} />
+            }
+          </div>
           <SpeechBubble text={line.text} tailRight={isRight} />
         </div>
       </div>

@@ -45,9 +45,13 @@ export function Component() {
   return (
     <GameModeProvider mode={mode}>
       <div className="w-screen h-screen bg-bfa-deep overflow-hidden relative">
-        <Suspense fallback={<LoadingBoard />}>
-          <GameScene />
-        </Suspense>
+        {/* Canvas: full bleed on desktop, vertically constrained on mobile so the board
+            sits between the scoreboard (top) and action panel (bottom) without gaps */}
+        <div className="absolute inset-x-0 top-12 bottom-44 sm:inset-0">
+          <Suspense fallback={<LoadingBoard />}>
+            <GameScene />
+          </Suspense>
+        </div>
         <GameHUD mode={mode} />
         <MascotOverlay />
         <EduTipOverlay />
