@@ -467,6 +467,14 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
         <VoiceSettingsButton />
       </div>
 
+      {/* BFA brand watermark — desktop only, bottom-right corner, subtle */}
+      <img
+        src="/widget-bfa.png"
+        alt="BFA"
+        title="Banco de Fomento Agropecuario"
+        className="hidden sm:block absolute bottom-3 right-3 w-7 h-7 opacity-40 hover:opacity-90 transition-opacity pointer-events-auto z-20"
+      />
+
       {/* Dice + climate display — top right (smaller on mobile) */}
       {lastDice && (
         <div className="absolute top-12 right-2 sm:top-4 sm:right-4 glass-card px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center gap-0.5 sm:gap-1 z-20">

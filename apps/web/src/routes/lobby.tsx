@@ -98,7 +98,10 @@ export function Component() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(46,139,74,0.2)_0%,transparent_70%)]" />
 
       <div className="relative z-10 w-full max-w-md glass-card p-8 flex flex-col gap-6">
-        <h2 className="font-display font-bold text-2xl text-bfa-gold-500">Configurar Partida</h2>
+        <div className="flex items-center gap-3 -mb-1">
+          <img src="/logo-bfa.png" alt="BFA" className="h-9 w-auto" style={{ filter: 'drop-shadow(0 2px 6px rgba(245,197,24,0.25))' }} />
+          <h2 className="font-display font-bold text-2xl text-bfa-gold-500">Configurar Partida</h2>
+        </div>
 
         {/* Tabs Solo / Multi */}
         <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-white/5">

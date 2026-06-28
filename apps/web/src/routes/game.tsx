@@ -50,9 +50,21 @@ function LoadingBoard() {
   return (
     <div className="flex items-center justify-center h-full bg-bfa-deep">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-2 border-bfa-green-500 border-t-transparent rounded-full animate-spin" />
+        <img
+          src="/widget-bfa.png"
+          alt="BFA"
+          className="w-16 h-16"
+          style={{
+            animation: 'bfa-pulse 1.4s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 16px rgba(245,197,24,0.4))',
+          }}
+        />
         <p className="font-mono text-bfa-green-500 text-sm tracking-widest">Cargando tablero…</p>
       </div>
+      <style>{`@keyframes bfa-pulse {
+        0%, 100% { transform: scale(1);    opacity: 0.85; }
+        50%      { transform: scale(1.12); opacity: 1;    }
+      }`}</style>
     </div>
   )
 }

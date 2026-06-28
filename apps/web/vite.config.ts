@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['widget-bfa.png', 'logo-bfa.png'],
       manifest: {
         name:             'AGROPOLY BFA',
         short_name:       'AGROPOLY',
@@ -19,12 +19,9 @@ export default defineConfig({
         orientation:      'any',
         start_url:        '/',
         lang:             'es-SV',
-        // Using SVG icon — modern browsers (Chrome 99+, Safari 16+) accept SVG for installable PWAs.
-        // To target older Android: generate /public/icon-192.png + /public/icon-512.png from this SVG
-        // (e.g. via https://realfavicongenerator.net/) and add their entries here.
         icons: [
-          { src: '/favicon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/favicon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: '/widget-bfa.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/widget-bfa.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {

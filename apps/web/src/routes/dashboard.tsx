@@ -269,8 +269,20 @@ function EmptyChart() {
 function LoadingState() {
   return (
     <div className="glass-card p-12 text-center">
-      <div className="w-10 h-10 border-2 border-bfa-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+      <img
+        src="/widget-bfa.png"
+        alt="BFA"
+        className="w-14 h-14 mx-auto"
+        style={{
+          animation: 'bfa-pulse 1.4s ease-in-out infinite',
+          filter: 'drop-shadow(0 0 14px rgba(245,197,24,0.35))',
+        }}
+      />
       <p className="font-mono text-bfa-cream/40 text-sm mt-3">Cargando métricas…</p>
+      <style>{`@keyframes bfa-pulse {
+        0%, 100% { transform: scale(1);    opacity: 0.85; }
+        50%      { transform: scale(1.12); opacity: 1;    }
+      }`}</style>
     </div>
   )
 }

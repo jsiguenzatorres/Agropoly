@@ -319,6 +319,18 @@ export function VictoryScreen({ mode }: { mode: 'solo' | 'multi' }) {
               🔄 Nueva partida
             </button>
           </div>
+
+          {/* Brand footer */}
+          <div style={{
+            marginTop: '14px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            opacity: 0.5,
+          }}>
+            <img src="/logo-bfa.png" alt="BFA" style={{ height: '26px', width: 'auto' }} />
+            <span style={{ color: '#FDF8EE', fontSize: '10px', fontFamily: 'monospace', letterSpacing: '0.2em' }}>
+              PRESENTADO POR BFA · EL SALVADOR
+            </span>
+          </div>
         </div>
       </div>
     </>

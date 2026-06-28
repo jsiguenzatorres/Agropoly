@@ -19,10 +19,13 @@ export function Component() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(46,139,74,0.2)_0%,transparent_70%)]" />
 
       <div className="relative z-10 w-full max-w-2xl flex flex-col gap-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-mono tracking-widest text-bfa-cream/50 uppercase">Hall of Fame</p>
-            <h2 className="font-display font-bold text-3xl text-bfa-gold-500">🏆 Leaderboard</h2>
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img src="/logo-bfa.png" alt="BFA" className="h-12 w-auto shrink-0" style={{ filter: 'drop-shadow(0 2px 6px rgba(245,197,24,0.25))' }} />
+            <div>
+              <p className="text-xs font-mono tracking-widest text-bfa-cream/50 uppercase">Hall of Fame</p>
+              <h2 className="font-display font-bold text-3xl text-bfa-gold-500">🏆 Leaderboard</h2>
+            </div>
           </div>
           <button onClick={() => navigate('/')} className="btn-secondary text-sm">
             Inicio
