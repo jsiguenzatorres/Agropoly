@@ -89,8 +89,15 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   }, [pending, mode])
 
   // Mascot trigger — fires whenever pending action or active player changes
+  // La Vaquita BFA owns the GO event; La Tormenta only appears in Riesgo events
+  const lastPosition = useRef<number>(0)
   useEffect(() => {
     if (!game || !player) return
+    // Pass GO detection (La Vaquita)
+    const passedGoForMascot = player.position < lastPosition.current
+    lastPosition.current = player.position
+    if (passedGoForMascot) { showMascot(DIALOGUES.go_pass()); return }
+
     if (isMyTurn) {
       if      (pending === 'roll')        showMascot(DIALOGUES.roll_human())
       else if (pending === 'buy')         showMascot(DIALOGUES.buy())
@@ -99,6 +106,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
       else if (pending === 'cosecha')     showMascot(DIALOGUES.cosecha())
       else if (pending === 'riesgo')      showMascot(DIALOGUES.riesgo())
       else if (pending === 'jail_choice') showMascot(DIALOGUES.jail())
+      else if (pending === 'auction')     showMascot(DIALOGUES.auction_start())
     } else if (pending === 'cosecha' || pending === 'riesgo') {
       if (Math.random() < 0.4) showMascot(pending === 'cosecha' ? DIALOGUES.cosecha() : DIALOGUES.riesgo())
     }
@@ -301,7 +309,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
             {pending === 'buy' && space && (
               <>
                 <button
-                  onClick={() => { sfx.buy(); confirmBuy() }}
+                  onClick={() => { sfx.buy(); confirmBuy(); showMascot(DIALOGUES.property_bought()) }}
                   disabled={player.balance < space.price}
                   className="btn-gold w-full"
                 >
@@ -394,6 +402,8 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
                                 <button
                                   onClick={() => {
                                     sfx.buy(); build(sp.id)
+                                    // If this build creates a hotel (level 5), La Vaquita reacts
+                                    if (lvl + 1 >= HOTEL_LEVEL) showMascot(DIALOGUES.hotel_built())
                                     if (game.educationalMode && Math.random() < 0.4) showEduTip(EDU_TIPS.build())
                                   }}
                                   className="flex-1 px-2 py-1 rounded bg-bfa-green-500/20 hover:bg-bfa-green-500/30 text-bfa-green-300 text-[10px] font-mono"

@@ -63,3 +63,10 @@ apps/server/data/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Playwright MCP screenshots
+.playwright-mcp/
+
+# Design docs (local reference only)
+Dise\303\261o/
+Diseño/

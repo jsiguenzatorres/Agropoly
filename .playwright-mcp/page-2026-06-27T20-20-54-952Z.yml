@@ -1,8 +1,0 @@
-- generic [ref=e5]:
-  - generic [ref=e6]: Banco de Fomento Agropecuario · Est. 1973
-  - heading "AGROPOLY" [level=1] [ref=e7]
-  - paragraph [ref=e8]: Sembrando progreso desde 1973
-  - generic [ref=e9]:
-    - button "Nueva Partida" [ref=e10] [cursor=pointer]
-    - button "Dashboard Analytics" [ref=e11] [cursor=pointer]
-  - paragraph [ref=e12]: 🌾 AGROPOLY BFA — VERSIÓN APEX
