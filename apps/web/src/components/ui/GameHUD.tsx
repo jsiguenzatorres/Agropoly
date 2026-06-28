@@ -459,8 +459,9 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
         {musicOn ? '🎵 ON' : '🎵 off'}
       </button>
 
-      {/* Voice settings — adjacent to music toggle */}
-      <div className="absolute top-12 left-32 sm:top-4 sm:left-[395px] z-20">
+      {/* Voice settings — adjacent to music toggle. z-30 so the scoreboard's
+          horizontal-scroll container (z-20, mobile) doesn't intercept its clicks. */}
+      <div className="absolute top-12 left-36 sm:top-4 sm:left-[420px] z-30">
         <VoiceSettingsButton />
       </div>
 
