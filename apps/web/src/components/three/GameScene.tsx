@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
 import { BOARD_DATA } from '@agropoly/game-engine'
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../store/GameModeContext'
 import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-positions'
 import { sfx } from '../../lib/sfx'
+import { getTileTexture } from '../../lib/tile-texture'
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -30,10 +31,11 @@ const TOKEN_COLOR: Record<string, string> = {
 
 function BoardTile({ id }: { id: number }) {
   const space = BOARD_DATA[id]
-  if (!space) return null
-  const pos  = getBoardPosition(id)
   const side = getBoardSide(id)
   const corner = side === 'corner'
+  const texture = useMemo(() => getTileTexture(id, side), [id, side])
+  if (!space) return null
+  const pos  = getBoardPosition(id)
   const color  = space.type === 'prop' ? GROUP_COLOR[space.group] : SPACE_COLOR[space.type] ?? '#444'
   const w = corner ? 1.05 : 0.83
   const d = corner ? 1.05 : 0.90
@@ -44,10 +46,25 @@ function BoardTile({ id }: { id: number }) {
   if (side === 'left')   x += inset
   if (side === 'right')  x -= inset
   const vert = side === 'left' || side === 'right'
+
+  // Y-rotation so the printed face points toward the board center
+  let yRot = 0
+  if (side === 'top')    yRot = Math.PI       // tile prints upside-down so it reads from outside
+  if (side === 'left')   yRot = Math.PI / 2
+  if (side === 'right')  yRot = -Math.PI / 2
+
+  // BoxGeometry face order: [+X, -X, +Y, -Y, +Z, -Z].
+  // The top face is index 2 — we give it the printed texture, sides get the group color.
   return (
-    <mesh position={[x, 0.03, z]} receiveShadow>
+    <mesh position={[x, 0.03, z]} rotation={[0, yRot, 0]} receiveShadow>
       <boxGeometry args={vert ? [d, 0.06, w] : [w, 0.06, d]} />
-      <meshStandardMaterial color={color} roughness={0.35} metalness={0.15} />
+      {/* Side materials (5 of them) share the group/space color; top face uses the printed texture */}
+      <meshStandardMaterial attach="material-0" color={color} roughness={0.55} />
+      <meshStandardMaterial attach="material-1" color={color} roughness={0.55} />
+      <meshStandardMaterial attach="material-2" map={texture} roughness={0.45} metalness={0.05} />
+      <meshStandardMaterial attach="material-3" color={color} roughness={0.55} />
+      <meshStandardMaterial attach="material-4" color={color} roughness={0.55} />
+      <meshStandardMaterial attach="material-5" color={color} roughness={0.55} />
     </mesh>
   )
 }
