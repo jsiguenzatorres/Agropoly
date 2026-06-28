@@ -12,6 +12,7 @@ import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-
 import { sfx } from '../../lib/sfx'
 import { getTileTexture } from '../../lib/tile-texture'
 import { getCenterMapTexture } from '../../lib/es-map-texture'
+import { useInspectorStore } from '../../store/inspectorStore'
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ function BoardTile({ id }: { id: number }) {
   const side = getBoardSide(id)
   const corner = side === 'corner'
   const texture = useMemo(() => getTileTexture(id, side), [id, side])
+  const openInspector = useInspectorStore(s => s.open)
   if (!space) return null
   const pos  = getBoardPosition(id)
   const color  = space.type === 'prop' ? GROUP_COLOR[space.group] : SPACE_COLOR[space.type] ?? '#444'
@@ -58,7 +60,14 @@ function BoardTile({ id }: { id: number }) {
   // BoxGeometry face order: [+X, -X, +Y, -Y, +Z, -Z].
   // The top face is index 2 — we give it the printed texture, sides get the group color.
   return (
-    <mesh position={[x, 0.03, z]} rotation={[0, yRot, 0]} receiveShadow>
+    <mesh
+      position={[x, 0.03, z]}
+      rotation={[0, yRot, 0]}
+      receiveShadow
+      onClick={(e) => { e.stopPropagation(); openInspector(id) }}
+      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+      onPointerOut={() => { document.body.style.cursor = '' }}
+    >
       <boxGeometry args={vert ? [d, 0.06, w] : [w, 0.06, d]} />
       {/* Side materials (5 of them) share the group/space color; top face uses the printed texture */}
       <meshStandardMaterial attach="material-0" color={color} roughness={0.55} />

@@ -16,6 +16,7 @@ import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
 import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } from '../../lib/voice-command'
 import { toastMoneyIn, toastMoneyOut } from '../../store/toastStore'
 import { logEvent } from '../../store/eventLogStore'
+import { emitMoneyFlow } from '../../store/moneyFlowStore'
 import { startMusic, stopMusic, setTrack, isMusicEnabled } from '../../lib/music'
 
 const GROUP_NAMES: Record<number, string> = {
@@ -133,6 +134,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   }, [pending, humanPlayer?.balance, humanPlayer?.bankrupt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevBalance = useRef<number | null>(null)
+  const prevBalances = useRef<Record<string, number>>({})
   useEffect(() => {
     if (!humanPlayer) return
     const prev = prevBalance.current
@@ -143,6 +145,37 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     }
     prevBalance.current = humanPlayer.balance
   }, [humanPlayer?.balance]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect player-to-player money transfers (rent, collect_from_players) and tax/bank flows.
+  // Pair a loser delta with a winner delta of the same magnitude.
+  useEffect(() => {
+    if (!game) return
+    const losses: Array<{ id: string; amt: number }> = []
+    const gains:  Array<{ id: string; amt: number }> = []
+    game.players.forEach(p => {
+      const prev = prevBalances.current[p.id]
+      if (prev !== undefined && prev !== p.balance) {
+        const delta = p.balance - prev
+        if (delta > 0) gains.push({ id: p.id, amt: delta })
+        else losses.push({ id: p.id, amt: -delta })
+      }
+      prevBalances.current[p.id] = p.balance
+    })
+    // Pair matched amounts (rent/trade); unpaired losses → bank (taxes), unpaired gains → bank
+    const usedG = new Set<number>()
+    losses.forEach(l => {
+      const matchIdx = gains.findIndex((g, i) => !usedG.has(i) && g.amt === l.amt && g.id !== l.id)
+      if (matchIdx >= 0) {
+        usedG.add(matchIdx)
+        emitMoneyFlow(l.id, gains[matchIdx].id, l.amt)
+      } else {
+        emitMoneyFlow(l.id, 'bank', l.amt)
+      }
+    })
+    gains.forEach((g, i) => {
+      if (!usedG.has(i)) emitMoneyFlow('bank', g.id, g.amt)
+    })
+  }, [game?.players.map(p => p.balance).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Event log: capture turn transitions and dice rolls
   const lastTurnLogged = useRef<number>(-1)
@@ -297,6 +330,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
         {game.players.map((p, i) => (
           <div
             key={p.id}
+            data-player-id={p.id}
             className={`glass-card px-2.5 py-1 sm:px-3 sm:py-1.5 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs transition-all shrink-0 ${
               i === game.currentPlayerIndex
                 ? 'border-bfa-gold-500/60 bg-bfa-gold-500/10'

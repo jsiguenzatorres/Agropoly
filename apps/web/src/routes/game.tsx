@@ -17,6 +17,9 @@ import { LightningFlash } from '../components/ui/LightningFlash'
 import { CardRevealOverlay } from '../components/ui/CardRevealOverlay'
 import { TileEffectFX } from '../components/ui/TileEffectFX'
 import { PurchaseStamp } from '../components/ui/PurchaseStamp'
+import { MoneyFlowLayer } from '../components/ui/MoneyFlowLayer'
+import { PropertyInspector } from '../components/ui/PropertyInspector'
+import { Celebrations } from '../components/ui/Celebrations'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -96,6 +99,9 @@ export function Component() {
         <CardRevealOverlay mode={mode} />
         <TileEffectFX mode={mode} />
         <PurchaseStamp mode={mode} />
+        <MoneyFlowLayer />
+        <PropertyInspector mode={mode} />
+        <Celebrations mode={mode} />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>
