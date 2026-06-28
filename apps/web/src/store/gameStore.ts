@@ -10,6 +10,7 @@ import {
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
 import type { MascotLine } from '../lib/mascot-dialogues'
 import type { EduTip } from '../lib/edu-tips'
+import { quizForCardType, type QuizQuestion } from '../lib/glosario'
 
 export type PendingAction =
   | 'roll' | 'buy' | 'pay_rent' | 'pay_tax'
@@ -53,6 +54,12 @@ interface GameStore {
   eduTipSeq: number
   showEduTip: (tip: EduTip) => void
   dismissEduTip: () => void
+
+  // Educational quizzes (only when game.educationalMode === true)
+  pendingQuiz: QuizQuestion | null
+  conceptosVistos: string[]   // unique concept IDs the player has been quizzed on
+  showQuiz: (quiz: QuizQuestion) => void
+  dismissQuiz: () => void
 
   setMoving: (v: boolean) => void
   initGame: (setups: PlayerSetup[], eduMode: boolean) => void
@@ -124,6 +131,8 @@ export const useGameStore = create<GameStore>()(
     mascotSeq: 0,
     eduTip: null,
     eduTipSeq: 0,
+    pendingQuiz: null,
+    conceptosVistos: [],
     pending: 'roll',
     lastDice: null,
     pendingCard: null,
@@ -134,6 +143,12 @@ export const useGameStore = create<GameStore>()(
 
     showEduTip(tip)  { set(s => { s.eduTip = tip; s.eduTipSeq++ }) },
     dismissEduTip()  { set(s => { s.eduTip = null }) },
+
+    showQuiz(quiz)   { set(s => {
+      s.pendingQuiz = quiz
+      if (!s.conceptosVistos.includes(quiz.conceptoId)) s.conceptosVistos.push(quiz.conceptoId)
+    }) },
+    dismissQuiz()    { set(s => { s.pendingQuiz = null }) },
 
     setMoving(v) { set(s => { s.isMoving = v }) },
 
@@ -162,6 +177,8 @@ export const useGameStore = create<GameStore>()(
         s.lastDice = null
         s.pendingCard = null
         s.pendingAmount = 0
+        s.pendingQuiz = null
+        s.conceptosVistos = []
       })
     },
 
@@ -386,6 +403,13 @@ export const useGameStore = create<GameStore>()(
         else s.game.riesgoDeck = rest
         s.pendingCard = card
         s.pending = 'apply_card'
+        // Educational quiz: only for human players in edu mode, 50% chance
+        const player = s.game.players[s.game.currentPlayerIndex]
+        if (s.game.educationalMode && player && !player.isAI && Math.random() < 0.5) {
+          const quiz = quizForCardType(isCosecha ? 'cosecha' : 'riesgo')
+          s.pendingQuiz = quiz
+          if (!s.conceptosVistos.includes(quiz.conceptoId)) s.conceptosVistos.push(quiz.conceptoId)
+        }
       })
     },
 

@@ -7,8 +7,16 @@ import { GameHUD } from '../components/ui/GameHUD'
 import { MascotOverlay } from '../components/ui/MascotOverlay'
 import { EduTipOverlay } from '../components/ui/EduTipOverlay'
 import { VictoryScreen } from '../components/ui/VictoryScreen'
+import { QuizModal } from '../components/ui/QuizModal'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
+
+function ActiveQuizModal() {
+  const quiz    = useGameStore(s => s.pendingQuiz)
+  const dismiss = useGameStore(s => s.dismissQuiz)
+  if (!quiz) return null
+  return <QuizModal quiz={quiz} onClose={dismiss} />
+}
 
 function LoadingBoard() {
   return (
@@ -55,6 +63,7 @@ export function Component() {
         <GameHUD mode={mode} />
         <MascotOverlay />
         <EduTipOverlay />
+        <ActiveQuizModal />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>

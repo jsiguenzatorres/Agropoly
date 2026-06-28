@@ -4,6 +4,7 @@ import { getNetWorth, HOTEL_LEVEL } from '@agropoly/game-engine'
 import type { Player, BoardSpace } from '@agropoly/game-engine'
 import { useGameStore } from '../../store/gameStore'
 import { useMultiplayerStore } from '../../store/multiplayerStore'
+import { GLOSARIO } from '../../lib/glosario'
 
 const TOKEN_EMOJI: Record<string, string> = {
   maiz: '🌽', cafe: '☕', vaca: '🐄', tractor: '🚜', milpa: '🌿', pez: '🐟',
@@ -93,9 +94,10 @@ function computeStats(players: Player[], board: BoardSpace[], winnerId: string |
 export function VictoryScreen({ mode }: { mode: 'solo' | 'multi' }) {
   const navigate = useNavigate()
 
-  const soloGame   = useGameStore(s => s.game)
-  const soloPending = useGameStore(s => s.pending)
-  const soloReset  = useGameStore(s => s.reset)
+  const soloGame      = useGameStore(s => s.game)
+  const soloPending   = useGameStore(s => s.pending)
+  const soloReset     = useGameStore(s => s.reset)
+  const conceptosVist = useGameStore(s => s.conceptosVistos)
 
   const multiGame    = useMultiplayerStore(s => s.game)
   const multiPending = useMultiplayerStore(s => s.pending)
@@ -235,6 +237,25 @@ export function VictoryScreen({ mode }: { mode: 'solo' | 'multi' }) {
               </div>
             ))}
           </div>
+
+          {/* Concepts seen (educational mode only) */}
+          {mode === 'solo' && game.educationalMode && conceptosVist.length > 0 && (
+            <div style={{
+              padding: '10px 12px',
+              background: 'rgba(46,139,74,0.1)',
+              border: '1px solid rgba(46,139,74,0.3)',
+              borderRadius: '10px',
+            }}>
+              <p style={{ color: '#F5C518', fontSize: '11px', fontWeight: 700,
+                          margin: '0 0 6px', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+                📚 CONCEPTOS QUE PRACTICASTE ({conceptosVist.length})
+              </p>
+              <p style={{ color: 'rgba(245,232,200,0.75)', fontSize: '11px',
+                          margin: 0, lineHeight: 1.5 }}>
+                {conceptosVist.map(id => GLOSARIO[id]?.termino ?? id).join(' · ')}
+              </p>
+            </div>
+          )}
 
           {/* Meta */}
           <p style={{
