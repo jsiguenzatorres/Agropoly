@@ -3,6 +3,7 @@ import type { Room } from 'colyseus.js'
 import { BOARD_DATA } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card } from '@agropoly/game-engine'
 import type { PendingAction, AuctionState } from './gameStore'
+import { useChatStore } from './chatStore'
 
 export interface TradeOffer {
   fromId: string
@@ -25,6 +26,7 @@ interface MultiplayerStore {
   room: Room | null
   mySessionId: string
   connected: boolean
+  isSpectator: boolean
 
   // Mirror of GameStateSchema, projected into the same shapes gameStore uses
   game: GameState | null
@@ -38,7 +40,7 @@ interface MultiplayerStore {
   auction: AuctionState | null
   tradeOffer: TradeOffer | null
 
-  setRoom: (room: Room | null) => void
+  setRoom: (room: Room | null, opts?: { spectator?: boolean }) => void
   disconnect: () => void
 
   // Actions = send messages to the room
@@ -63,6 +65,8 @@ interface MultiplayerStore {
   acceptTrade:     () => void
   rejectTrade:     () => void
   useJailFreeCard: () => void
+  sendChat:    (text: string) => void
+  sendReact:   (emoji: string) => void
 }
 
 // ── Schema projection: turn an ArraySchema/MapSchema state into plain GameState shape
@@ -133,6 +137,7 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   room: null,
   mySessionId: '',
   connected: false,
+  isSpectator: false,
   game: null,
   pending: 'roll',
   lastDice: null,
@@ -144,14 +149,14 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   auction: null,
   tradeOffer: null,
 
-  setRoom(room) {
+  setRoom(room, opts) {
     if (!room) {
-      set({ room: null, mySessionId: '', connected: false, game: null,
+      set({ room: null, mySessionId: '', connected: false, isSpectator: false, game: null,
             pending: 'roll', lastDice: null, pendingCard: null, pendingAmount: 0,
             phase: 'waiting', hostId: '', isHost: false })
       return
     }
-    set({ room, mySessionId: room.sessionId, connected: true })
+    set({ room, mySessionId: room.sessionId, connected: true, isSpectator: !!opts?.spectator })
 
     const apply = () => {
       const s: any = room.state
@@ -194,7 +199,16 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
     room.onStateChange(apply)
     apply()
 
+    // Ephemeral chat + reactions
+    room.onMessage('chat_msg', (m: { fromId: string; fromName: string; text: string; ts: number }) => {
+      useChatStore.getState().appendMessage(m)
+    })
+    room.onMessage('react', (r: { fromId: string; fromName: string; emoji: string; ts: number }) => {
+      useChatStore.getState().appendReaction({ fromName: r.fromName, emoji: r.emoji })
+    })
+
     room.onLeave(() => {
+      useChatStore.getState().reset()
       get().setRoom(null)
     })
   },
@@ -226,6 +240,8 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   acceptTrade()       { get().room?.send('accept_trade') },
   rejectTrade()       { get().room?.send('reject_trade') },
   useJailFreeCard()   { get().room?.send('use_jail_card') },
+  sendChat(text)      { get().room?.send('chat_msg', { text }) },
+  sendReact(emoji)    { get().room?.send('react', { emoji }) },
 }))
 
 if (import.meta.env.DEV) {

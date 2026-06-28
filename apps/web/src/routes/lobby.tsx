@@ -76,12 +76,14 @@ export function Component() {
     }
   }
 
-  async function handleJoinRoom() {
+  async function handleJoinRoom(asSpectator = false) {
     setError(null); setConnecting(true)
     try {
-      const room = await joinRoomById(roomCode.trim(), { name: name.trim(), tokenId: token })
-      setMpRoom(room)
-      navigate(`/room/${room.roomId}`)
+      const room = await joinRoomById(roomCode.trim(), {
+        name: name.trim(), tokenId: token, spectator: asSpectator,
+      })
+      setMpRoom(room, { spectator: asSpectator })
+      navigate(asSpectator ? `/game?mode=multi` : `/room/${room.roomId}`)
     } catch (e) {
       setError((e as Error).message ?? 'No se pudo unir a la sala')
     } finally {
@@ -203,9 +205,17 @@ export function Component() {
             <button
               className="btn-secondary"
               disabled={!canSubmit || roomCode.trim().length === 0}
-              onClick={handleJoinRoom}
+              onClick={() => handleJoinRoom(false)}
             >
               {connecting ? '…' : '🚪 Unirse a Sala'}
+            </button>
+            <button
+              className="btn-secondary opacity-80 text-sm"
+              disabled={!canSubmit || roomCode.trim().length === 0}
+              onClick={() => handleJoinRoom(true)}
+              title="Solo observar la partida (facilitadores BFA)"
+            >
+              {connecting ? '…' : '👁️ Espectador'}
             </button>
           </div>
         )}

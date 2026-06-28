@@ -12,6 +12,7 @@ export interface RoomJoinOptions {
   name: string
   tokenId: string
   educationalMode?: boolean
+  spectator?: boolean
 }
 
 export async function createRoom(opts: RoomJoinOptions): Promise<Room> {

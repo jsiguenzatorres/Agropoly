@@ -20,6 +20,7 @@ interface JoinOptions {
   name?: string
   tokenId?: string
   educationalMode?: boolean
+  spectator?: boolean
 }
 
 export class GameRoom extends Room<GameStateSchema> {
@@ -87,10 +88,31 @@ export class GameRoom extends Room<GameStateSchema> {
     this.onMessage('accept_trade', client => this.tradeResponseGuard(client, () => this.acceptTrade()))
     this.onMessage('reject_trade', client => this.tradeResponseGuard(client, () => this.rejectTrade()))
 
+    // Chat + reactions — ephemeral, broadcast to all clients (not persisted in schema)
+    this.onMessage('chat_msg', (client, msg: { text?: string }) => {
+      const player = this.state.players.find((p: PlayerState) => p.id === client.sessionId)
+      if (!player) return
+      const text = String(msg?.text ?? '').slice(0, 200).trim()
+      if (!text) return
+      this.broadcast('chat_msg', { fromId: client.sessionId, fromName: player.name, text, ts: Date.now() })
+    })
+    this.onMessage('react', (client, msg: { emoji?: string }) => {
+      const player = this.state.players.find((p: PlayerState) => p.id === client.sessionId)
+      if (!player) return
+      const emoji = String(msg?.emoji ?? '').slice(0, 4)
+      if (!emoji) return
+      this.broadcast('react', { fromId: client.sessionId, fromName: player.name, emoji, ts: Date.now() })
+    })
+
     console.log(`[GameRoom] Created — roomId=${this.roomId}`)
   }
 
   onJoin(client: Client, options: JoinOptions) {
+    // Spectators may join at any time — they don't enter the players array
+    if (options.spectator) {
+      console.log(`[GameRoom] Spectator ${options.name ?? client.sessionId} joined`)
+      return
+    }
     if (this.state.phase !== 'waiting') return
     const player = new PlayerState()
     player.id      = client.sessionId

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { useMultiplayerStore } from '../../store/multiplayerStore'
 import { useGameSource } from '../../store/useGameSource'
 import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
@@ -75,10 +76,12 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
 
   const player = game?.players[game?.currentPlayerIndex ?? 0] ?? null
   const locked = isMoving
+  // Spectators never have a turn — always view-only
+  const isSpectator = mode === 'multi' && useMultiplayerStore.getState().isSpectator
   // In multi mode, "isHuman" means "this is MY turn"; in solo, !player.isAI
-  const isMyTurn = mode === 'multi'
+  const isMyTurn = isSpectator ? false : (mode === 'multi'
     ? !!(player && src.mySessionId && player.id === src.mySessionId)
-    : !!(player && !player.isAI)
+    : !!(player && !player.isAI))
   const [showTrade, setShowTrade] = useState(false)
   const [voiceOn, setVoiceOn] = useState(false)
   const voiceHandle = useRef<VoiceCommandHandle | null>(null)
@@ -237,6 +240,13 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
           </div>
         ))}
       </div>
+
+      {/* Spectator indicator */}
+      {isSpectator && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 glass-card px-3 py-1 text-[10px] sm:text-xs font-mono text-bfa-amber border border-bfa-amber/40 bg-bfa-amber/10">
+          👁️ MODO ESPECTADOR
+        </div>
+      )}
 
       {/* Voice toggle — top left below scoreboard on mobile, hidden if not supported */}
       {isVoiceCommandSupported() && (
