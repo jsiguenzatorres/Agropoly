@@ -11,6 +11,7 @@ import voiceRoutes       from './api/voice'
 import educationRoutes   from './api/education'
 import leaderboardRoutes from './api/leaderboard'
 import sessionsRoutes    from './api/sessions'
+import analyticsRoutes   from './api/analytics'
 import { GameRoom }      from './rooms/GameRoom'
 
 const app = new Hono()
@@ -24,6 +25,7 @@ app.route('/api/voice',       voiceRoutes)
 app.route('/api/education',   educationRoutes)
 app.route('/api/leaderboard', leaderboardRoutes)
 app.route('/api/sessions',    sessionsRoutes)
+app.route('/api/analytics',   analyticsRoutes)
 
 const PORT = Number(process.env.PORT ?? 2567)
 

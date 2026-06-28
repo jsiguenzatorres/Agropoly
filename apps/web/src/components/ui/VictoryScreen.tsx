@@ -8,6 +8,7 @@ import { GLOSARIO } from '../../lib/glosario'
 import { recordResult } from '../../lib/stats'
 import { checkGameEndUnlocks } from '../../lib/achievements'
 import { dispatchUnlocks } from '../../store/achievementToastStore'
+import { track } from '../../lib/analytics'
 
 const TOKEN_EMOJI: Record<string, string> = {
   maiz: '🌽', cafe: '☕', vaca: '🐄', tractor: '🚜', milpa: '🌿', pez: '🐟',
@@ -129,6 +130,24 @@ export function VictoryScreen({ mode }: { mode: 'solo' | 'multi' }) {
     if (!humanPlayer) return
     const isWinner = humanPlayer.id === winnerId
     recordResult(isWinner)
+    // Analytics: game ended event
+    const winnerObj = game.players.find(p => p.id === winnerId)
+    const survivors = game.players.filter(p => !p.bankrupt).length
+    const reason = winnerObj && winnerObj.balance >= 5000
+      ? 'wealth'
+      : survivors <= 1
+        ? 'last_standing'
+        : 'timeout'
+    track('game_ended', {
+      mode,
+      reason,
+      winnerName: winnerObj?.name ?? null,
+      winnerToken: winnerObj?.tokenId ?? null,
+      humanWon: isWinner,
+      bankruptCount: game.players.filter(p => p.bankrupt).length,
+      turns: game.turnCount,
+      durationMs: Date.now() - (useGameStore.getState().startedAt || Date.now()),
+    })
     // Achievement end-of-game checks
     const myStats = stats.find(s => s.player.id === humanPlayer.id)
     if (myStats) {

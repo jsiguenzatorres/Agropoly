@@ -4,7 +4,7 @@
 // with step-by-step instructions to install a Latin Spanish voice per OS.
 
 import { useEffect, useState } from 'react'
-import { hasSpanishVoice, listVoices, speak, isSpeechSupported } from '../../lib/speech'
+import { listVoices, speak, isSpeechSupported } from '../../lib/speech'
 
 type VoiceStatus = 'latin' | 'spain' | 'fallback' | 'none' | 'unsupported'
 

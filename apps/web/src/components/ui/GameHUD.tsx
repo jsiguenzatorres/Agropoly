@@ -13,6 +13,7 @@ import {
 } from '@agropoly/game-engine'
 import { TradeComposeModal } from './TradeModal'
 import { VoiceSettingsButton } from './VoiceSettingsButton'
+import { track } from '../../lib/analytics'
 import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
 import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } from '../../lib/voice-command'
 import { toastMoneyIn, toastMoneyOut } from '../../store/toastStore'
@@ -228,6 +229,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     game.players.forEach(p => {
       if (p.bankrupt && !lastBankruptRef.current.has(p.id)) {
         lastBankruptRef.current.add(p.id)
+        track('bankruptcy', { name: p.name, tokenId: p.tokenId, isAI: p.isAI })
         setTimeout(() => showMascot(DIALOGUES.commentary_bankruptcy(p.name)), 1500)
       }
     })

@@ -14,6 +14,7 @@ import type { EduTip } from '../lib/edu-tips'
 import { quizForCardType, type QuizQuestion } from '../lib/glosario'
 import { unlockFirstProperty, unlockGroupComplete, bumpHotel } from '../lib/achievements'
 import { dispatchUnlock } from './achievementToastStore'
+import { track, setAnalyticsContext } from '../lib/analytics'
 
 export type PendingAction =
   | 'roll' | 'buy' | 'pay_rent' | 'pay_tax'
@@ -152,7 +153,7 @@ function nextPlayerIndex(game: GameState): number {
 }
 
 export const useGameStore = create<GameStore>()(
-  immer((set) => ({
+  immer((set, get) => ({
     game: null,
     gameId: 0,
     sessionId: '',
@@ -199,10 +200,11 @@ export const useGameStore = create<GameStore>()(
         educationalMode: eduMode,
         winner: null,
       }
+      const sessionId = `solo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
       set(s => {
         s.game = game
         s.gameId++
-        s.sessionId = `solo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+        s.sessionId = sessionId
         s.startedAt = Date.now()
         s.isMoving = false
         s.pending = 'roll'
@@ -211,6 +213,16 @@ export const useGameStore = create<GameStore>()(
         s.pendingAmount = 0
         s.pendingQuiz = null
         s.conceptosVistos = []
+      })
+      const humanName = players.find(p => !p.isAI)?.name ?? 'Anónimo'
+      setAnalyticsContext({ sessionId, userName: humanName })
+      track('game_started', {
+        mode:     'solo',
+        eduMode,
+        players:  players.length,
+        ai:       players.filter(p => p.isAI).length,
+        tokens:   players.map(p => p.tokenId),
+        humanName,
       })
     },
 
@@ -466,6 +478,16 @@ export const useGameStore = create<GameStore>()(
     },
 
     applyCard() {
+      // Pre-track the card before state mutation
+      const cur = get()
+      if (cur.pendingCard) {
+        track('card_revealed', {
+          type:   cur.pendingCard.type,
+          action: cur.pendingCard.effect.action,
+          title:  cur.pendingCard.title,
+          amount: 'amount' in cur.pendingCard.effect ? cur.pendingCard.effect.amount : undefined,
+        })
+      }
       set(s => {
         if (!s.game || !s.pendingCard) return
         const player = s.game.players[s.game.currentPlayerIndex]
