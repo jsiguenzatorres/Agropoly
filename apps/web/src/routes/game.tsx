@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
+import { useMultiplayerStore } from '../store/multiplayerStore'
+import { GameModeProvider } from '../store/GameModeContext'
 import { GameHUD } from '../components/ui/GameHUD'
 import { MascotOverlay } from '../components/ui/MascotOverlay'
 import { EduTipOverlay } from '../components/ui/EduTipOverlay'
@@ -19,24 +21,36 @@ function LoadingBoard() {
 }
 
 export function Component() {
-  const game = useGameStore(s => s.game)
+  const [params] = useSearchParams()
+  const mode = params.get('mode') === 'multi' ? 'multi' : 'solo'
+
+  const soloGame  = useGameStore(s => s.game)
+  const multiGame = useMultiplayerStore(s => s.game)
+  const connected = useMultiplayerStore(s => s.connected)
+  const game = mode === 'multi' ? multiGame : soloGame
+
   const navigate = useNavigate()
 
-  // Si llegamos a /game sin inicializar, volver al lobby
   useEffect(() => {
-    if (!game) navigate('/lobby', { replace: true })
-  }, [game, navigate])
+    if (mode === 'multi' && !connected) {
+      navigate('/lobby', { replace: true })
+    } else if (mode === 'solo' && !soloGame) {
+      navigate('/lobby', { replace: true })
+    }
+  }, [mode, connected, soloGame, navigate])
 
   if (!game) return <LoadingBoard />
 
   return (
-    <div className="w-screen h-screen bg-bfa-deep overflow-hidden relative">
-      <Suspense fallback={<LoadingBoard />}>
-        <GameScene />
-      </Suspense>
-      <GameHUD />
-      <MascotOverlay />
-      <EduTipOverlay />
-    </div>
+    <GameModeProvider mode={mode}>
+      <div className="w-screen h-screen bg-bfa-deep overflow-hidden relative">
+        <Suspense fallback={<LoadingBoard />}>
+          <GameScene />
+        </Suspense>
+        <GameHUD mode={mode} />
+        <MascotOverlay />
+        <EduTipOverlay />
+      </div>
+    </GameModeProvider>
   )
 }

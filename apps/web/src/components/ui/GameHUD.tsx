@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { useGameSource } from '../../store/useGameSource'
 import { useNavigate } from 'react-router-dom'
 import { sfx } from '../../lib/sfx'
 import { DIALOGUES } from '../../lib/mascot-dialogues'
@@ -19,16 +20,23 @@ function Die({ value }: { value: number }) {
   return <span className="text-3xl">{dots[value] ?? '?'}</span>
 }
 
-export function GameHUD() {
+export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
+  const src = useGameSource(mode)
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
-    drawCard, applyCard, payJailFine, rollForJail, endTurn, reset,
-    showMascot, showEduTip, build,
-  } = useGameStore()
+    drawCard, applyCard, payJailFine, rollForJail, endTurn, reset, build,
+  } = src
+  // Mascot/EduTip state lives only in the local gameStore — both modes use it
+  const showMascot = useGameStore(s => s.showMascot)
+  const showEduTip = useGameStore(s => s.showEduTip)
   const navigate = useNavigate()
 
   const player = game?.players[game?.currentPlayerIndex ?? 0] ?? null
   const locked = isMoving
+  // In multi mode, "isHuman" means "this is MY turn"; in solo, !player.isAI
+  const isMyTurn = mode === 'multi'
+    ? !!(player && src.mySessionId && player.id === src.mySessionId)
+    : !!(player && !player.isAI)
 
   // SFX on game over
   useEffect(() => { if (pending === 'game_over') sfx.win() }, [pending])
@@ -36,7 +44,7 @@ export function GameHUD() {
   // Mascot trigger — fires whenever pending action or active player changes
   useEffect(() => {
     if (!game || !player) return
-    if (!player.isAI) {
+    if (isMyTurn) {
       if      (pending === 'roll')        showMascot(DIALOGUES.roll_human())
       else if (pending === 'buy')         showMascot(DIALOGUES.buy())
       else if (pending === 'pay_rent')    showMascot(DIALOGUES.pay_rent())
@@ -73,8 +81,9 @@ export function GameHUD() {
     else if (pending === 'jail_choice')                     showEduTip(EDU_TIPS.jail())
   }, [pending, game?.currentPlayerIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // AI auto-play — waits until animation finishes
+  // AI auto-play — waits until animation finishes; only in solo mode
   useEffect(() => {
+    if (mode !== 'solo') return
     if (!game || !player?.isAI || pending === 'game_over' || isMoving) return
     const delay = pending === 'roll' ? 1400 : 900
     const t = setTimeout(() => {
@@ -112,7 +121,7 @@ export function GameHUD() {
   const space = game.board[player.position]
   const alive = game.players.filter(p => !p.bankrupt)
 
-  const isHuman = !player.isAI
+  const isHuman = isMyTurn
 
   return (
     <>

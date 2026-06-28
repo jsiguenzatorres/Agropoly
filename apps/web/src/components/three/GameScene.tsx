@@ -3,7 +3,10 @@ import { OrbitControls, Environment } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { Group } from 'three'
 import { BOARD_DATA } from '@agropoly/game-engine'
-import { useGameStore } from '../../store/gameStore'
+import {
+  useActiveGame, useActiveBoardSpace, useActivePlayers,
+  useActiveCurrentIdx, useActiveGameId, useActiveSetMoving,
+} from '../../store/GameModeContext'
 import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-positions'
 import { sfx } from '../../lib/sfx'
 
@@ -50,8 +53,8 @@ function BoardTile({ id }: { id: number }) {
 }
 
 function OwnerDot({ id }: { id: number }) {
-  const space = useGameStore(s => s.game?.board[id])
-  const players = useGameStore(s => s.game?.players)
+  const space = useActiveBoardSpace(id)
+  const players = useActivePlayers()
   if (!space?.ownerId || space.type !== 'prop') return null
   const owner = players?.find(p => p.id === space.ownerId)
   if (!owner) return null
@@ -66,7 +69,7 @@ function OwnerDot({ id }: { id: number }) {
 }
 
 function Buildings({ id }: { id: number }) {
-  const space = useGameStore(s => s.game?.board[id])
+  const space = useActiveBoardSpace(id)
   if (!space || space.type !== 'prop' || !space.buildings) return null
   const pos  = getBoardPosition(id)
   const side = getBoardSide(id)
@@ -243,10 +246,10 @@ function computeSteps(from: number, to: number): number[] {
 const STEP_INTERVAL = 0.13  // seconds per space
 
 function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
-  const game      = useGameStore(s => s.game)
-  const gameId    = useGameStore(s => s.gameId)
-  const setMoving = useGameStore(s => s.setMoving)
-  const curIdx    = useGameStore(s => s.game?.currentPlayerIndex ?? 0)
+  const game      = useActiveGame()
+  const gameId    = useActiveGameId()
+  const setMoving = useActiveSetMoving()
+  const curIdx    = useActiveCurrentIdx()
 
   const player = game?.players[playerIndex]
 
@@ -364,7 +367,7 @@ function Lights() {
 // ─── Scene ────────────────────────────────────────────────────────────────────
 
 function Scene() {
-  const game = useGameStore(s => s.game)
+  const game = useActiveGame()
   return (
     <>
       <Lights />

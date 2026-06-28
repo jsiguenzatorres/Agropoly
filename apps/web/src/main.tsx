@@ -27,6 +27,10 @@ const router = createBrowserRouter([
     lazy: () => import('./routes/lobby'),
   },
   {
+    path: '/room/:roomId',
+    lazy: () => import('./routes/room'),
+  },
+  {
     path: '/dashboard',
     lazy: () => import('./routes/dashboard'),
   },

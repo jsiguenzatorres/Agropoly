@@ -32,6 +32,9 @@ importers:
       '@colyseus/monitor':
         specifier: ^0.15.0
         version: 0.15.8
+      '@colyseus/schema':
+        specifier: ^2.0.37
+        version: 2.0.37
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.14(hono@4.12.27)
@@ -75,6 +78,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.1
         version: 0.32.1
+      '@colyseus/schema':
+        specifier: ^2.0.37
+        version: 2.0.37
       '@gsap/react':
         specifier: ^2.1.1
         version: 2.1.2(gsap@3.15.0)(react@18.3.1)
@@ -105,6 +111,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.62.0
         version: 5.101.1(react@18.3.1)
+      colyseus.js:
+        specifier: ^0.15.0
+        version: 0.15.28
       framer-motion:
         specifier: ^11.11.0
         version: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1691,6 +1700,10 @@ packages:
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
 
+  colyseus.js@0.15.28:
+    resolution: {integrity: sha512-fJx/EcK4fQsugNviXpTD78bVXySutLprViAWy5qMuyhcU0MfeUuHfrlvUqI18dQUStGckvLggTC7EexmIyI+3g==}
+    engines: {node: '>= 12.x'}
+
   colyseus@0.15.57:
     resolution: {integrity: sha512-h9hkmXOvcreRhJxdu73BJctGEPYW36ImHByjiMhEOIuSQLcNSlkcwaqCll/7Oc/cTELHStTa5eyOnI640mOe8A==}
     engines: {node: '>= 14.x'}
@@ -2162,6 +2175,10 @@ packages:
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
     engines: {node: '>= 0.8'}
+
+  httpie@2.0.0-next.13:
+    resolution: {integrity: sha512-KbKOnq8wt0hVEfteYCSnEsPgzaWxcVc4qZ4OaDU9mVOYLRo3XChjWs3MiuRgFu5y+4JDo7sDKdKzkAn1ljQYFA==}
+    engines: {node: '>=10'}
 
   human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
@@ -4640,6 +4657,16 @@ snapshots:
 
   color-name@1.1.4: {}
 
+  colyseus.js@0.15.28:
+    dependencies:
+      '@colyseus/schema': 2.0.37
+      httpie: 2.0.0-next.13
+      tslib: 2.8.1
+      ws: 8.21.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   colyseus@0.15.57(@colyseus/schema@2.0.37)(express@4.22.2):
     dependencies:
       '@colyseus/auth': 0.15.12(@colyseus/core@0.15.57(@colyseus/schema@2.0.37))(express@4.22.2)
@@ -5199,6 +5226,8 @@ snapshots:
       setprototypeof: 1.2.0
       statuses: 2.0.2
       toidentifier: 1.0.1
+
+  httpie@2.0.0-next.13: {}
 
   human-signals@2.1.0: {}
 
