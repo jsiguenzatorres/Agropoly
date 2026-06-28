@@ -20,6 +20,7 @@ import { PurchaseStamp } from '../components/ui/PurchaseStamp'
 import { MoneyFlowLayer } from '../components/ui/MoneyFlowLayer'
 import { PropertyInspector } from '../components/ui/PropertyInspector'
 import { Celebrations } from '../components/ui/Celebrations'
+import { ClimateDieRoll } from '../components/ui/ClimateDieRoll'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -102,6 +103,7 @@ export function Component() {
         <MoneyFlowLayer />
         <PropertyInspector mode={mode} />
         <Celebrations mode={mode} />
+        <ClimateDieRoll mode={mode} />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>

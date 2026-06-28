@@ -486,7 +486,19 @@ function PulseRing({ x, z, color }: { x: number; z: number; color: string }) {
 }
 
 // Ambient floating gold particles — 150 small dots drifting upward, recycled.
+// Particle color/speed by climate. Default gold matches the brand.
+const CLIMATE_PARTICLE: Record<string, { color: string; speed: number; size: number }> = {
+  sol:      { color: '#F5C518', speed: 0.30, size: 0.05 },
+  lluvia:   { color: '#5AA8E0', speed: 0.85, size: 0.04 },   // raindrops falling fast
+  tormenta: { color: '#8888AA', speed: 1.10, size: 0.06 },   // agitated grey wind
+  arcoiris: { color: '#F5C518', speed: 0.35, size: 0.06 },   // calm gold; rainbow handled by hue-rotate per particle index
+  default:  { color: '#F5C518', speed: 0.30, size: 0.05 },
+}
+
 function AmbientParticles() {
+  const game = useActiveGame()
+  const climate = game?.climate ?? 'default'
+  const cfg = CLIMATE_PARTICLE[climate] ?? CLIMATE_PARTICLE.default
   const groupRef = useRef<Group>(null)
   const count = 150
   const positions = useMemo(() => {
@@ -499,16 +511,33 @@ function AmbientParticles() {
     return arr
   }, [count])
 
+  const isRain  = climate === 'lluvia'
+  const isStorm = climate === 'tormenta'
+
   useFrame((_, delta) => {
     if (!groupRef.current) return
     const arr = (groupRef.current.children[0] as unknown as { geometry: { attributes: { position: { array: Float32Array; needsUpdate: boolean } } } })
       .geometry.attributes.position.array
     for (let i = 0; i < count; i++) {
-      arr[i * 3 + 1] += delta * 0.3
-      if (arr[i * 3 + 1] > 14) {
-        arr[i * 3 + 1] = -1
-        arr[i * 3 + 0] = (Math.random() - 0.5) * 24
-        arr[i * 3 + 2] = (Math.random() - 0.5) * 24
+      if (isRain) {
+        // Falls DOWN instead of up
+        arr[i * 3 + 1] -= delta * cfg.speed * 6
+        if (arr[i * 3 + 1] < -1) {
+          arr[i * 3 + 1] = 14
+          arr[i * 3 + 0] = (Math.random() - 0.5) * 24
+          arr[i * 3 + 2] = (Math.random() - 0.5) * 24
+        }
+      } else {
+        arr[i * 3 + 1] += delta * cfg.speed
+        if (isStorm) {
+          // Agitated horizontal sway
+          arr[i * 3 + 0] += Math.sin(i + arr[i * 3 + 1]) * delta * 0.4
+        }
+        if (arr[i * 3 + 1] > 14) {
+          arr[i * 3 + 1] = -1
+          arr[i * 3 + 0] = (Math.random() - 0.5) * 24
+          arr[i * 3 + 2] = (Math.random() - 0.5) * 24
+        }
       }
     }
     ;(groupRef.current.children[0] as unknown as { geometry: { attributes: { position: { needsUpdate: boolean } } } })
@@ -517,11 +546,11 @@ function AmbientParticles() {
 
   return (
     <group ref={groupRef}>
-      <points>
+      <points key={climate /* re-key on climate change so material refreshes */}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} args={[positions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#F5C518" size={0.05} transparent opacity={0.55} sizeAttenuation />
+        <pointsMaterial color={cfg.color} size={cfg.size} transparent opacity={0.55} sizeAttenuation />
       </points>
     </group>
   )

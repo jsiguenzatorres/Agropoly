@@ -106,4 +106,34 @@ export const DIALOGUES = {
     text: `¡¡${name} gana!! ¡El mejor agricultor de El Salvador! ¡Muuu!`,
     mood: 'excited',
   }),
+
+  // ── Commentary lines (narrador automático de eventos del juego) ──────────
+  commentary_group_complete: (playerName: string, groupName: string): MascotLine => pick([
+    { id: 'la_vaquita',  text: `¡Muuu! ${playerName} ya domina ${groupName}. Renta x2 desde ahora.`, mood: 'excited' },
+    { id: 'don_fomento', text: `${playerName} cerró el grupo ${groupName}. Trabajo bien hecho.`,    mood: 'happy' },
+  ]),
+  commentary_hotel: (playerName: string, tileName: string): MascotLine => pick([
+    { id: 'la_vaquita', text: `¡Muuu! Un Centro de Servicio BFA en ${tileName}. ¡${playerName} es fuerte!`, mood: 'excited' },
+    { id: 'don_cafe',   text: `${playerName} levantó un Centro en ${tileName}. La competencia se calienta.`, mood: 'worried' },
+  ]),
+  commentary_bankruptcy: (playerName: string): MascotLine => pick([
+    { id: 'don_fomento', text: `${playerName} quebró. A veces el campo es duro, pero siempre se vuelve a sembrar.`, mood: 'sad' },
+    { id: 'la_tormenta', text: `⛈️ Hasta los más grandes caen. ${playerName} salió del juego.`, mood: 'sad' },
+  ]),
+  commentary_auction_won: (playerName: string, amount: number, tileName: string): MascotLine => pick([
+    { id: 'maicita',  text: `¡${playerName} se quedó con ${tileName} por ƒ${amount}! Buena jugada.`, mood: 'happy' },
+    { id: 'don_cafe', text: `${playerName} ganó la subasta por ƒ${amount}. Era una buena oferta.`,    mood: 'neutral' },
+  ]),
+  commentary_jail_free_used: (playerName: string): MascotLine => pick([
+    { id: 'don_fomento', text: `${playerName} usó su Tarjeta Libre de Emergencia. ¡Listo para seguir!`, mood: 'happy' },
+    { id: 'maicita',     text: `¡${playerName} se salvó con su carta! Ahora a jugar fuerte.`,            mood: 'excited' },
+  ]),
+  commentary_climate_extreme: (climate: 'tormenta' | 'arcoiris'): MascotLine =>
+    climate === 'tormenta'
+      ? { id: 'la_tormenta', text: '⛈️ ¡Viene tormenta! Las cosechas valen la mitad esta ronda.', mood: 'worried' }
+      : { id: 'la_vaquita',  text: '🌈 ¡Arcoíris en el campo! Las cosechas valen el doble. ¡Aprovechen!', mood: 'excited' },
+  commentary_trade_accepted: (fromName: string, toName: string): MascotLine => pick([
+    { id: 'don_fomento', text: `${fromName} y ${toName} cerraron un trato. Así se hace negocio.`, mood: 'happy' },
+    { id: 'maicita',     text: `¡Trato hecho entre ${fromName} y ${toName}!`,                      mood: 'excited' },
+  ]),
 } as const

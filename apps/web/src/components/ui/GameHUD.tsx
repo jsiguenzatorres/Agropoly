@@ -177,6 +177,57 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     })
   }, [game?.players.map(p => p.balance).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Mascot commentary: narrator for important events ─────────────────────
+  const lastBuildingsRef = useRef<Record<number, number>>({})
+  const lastBankruptRef  = useRef<Set<string>>(new Set())
+  const lastClimateRef   = useRef<string | null>(null)
+  const lastJailedRef    = useRef<Record<string, number>>({})    // jailFreeCards per player
+  useEffect(() => {
+    if (!game) return
+
+    // Hotel built → commentary (independent of Celebrations which also fires)
+    game.board.forEach(sp => {
+      const prev = lastBuildingsRef.current[sp.id] ?? 0
+      const cur  = sp.buildings ?? 0
+      if (cur === 5 && prev < 5) {
+        const owner = game.players.find(p => p.id === sp.ownerId)
+        if (owner) {
+          setTimeout(() => showMascot(DIALOGUES.commentary_hotel(owner.name, sp.name)), 3000)
+        }
+      }
+      lastBuildingsRef.current[sp.id] = cur
+    })
+
+    // Bankruptcy detected
+    game.players.forEach(p => {
+      if (p.bankrupt && !lastBankruptRef.current.has(p.id)) {
+        lastBankruptRef.current.add(p.id)
+        setTimeout(() => showMascot(DIALOGUES.commentary_bankruptcy(p.name)), 1500)
+      }
+    })
+
+    // Extreme climate (tormenta or arcoíris) — only on change
+    if (game.climate && game.climate !== lastClimateRef.current) {
+      if (game.climate === 'tormenta' || game.climate === 'arcoiris') {
+        setTimeout(() => showMascot(DIALOGUES.commentary_climate_extreme(game.climate as 'tormenta' | 'arcoiris')), 500)
+      }
+      lastClimateRef.current = game.climate
+    }
+
+    // Jail-free card used (jailFreeCards decreased AND player no longer jailed)
+    game.players.forEach(p => {
+      const prevCards = lastJailedRef.current[p.id] ?? 0
+      if (prevCards > p.jailFreeCards && !p.jailed) {
+        setTimeout(() => showMascot(DIALOGUES.commentary_jail_free_used(p.name)), 800)
+      }
+      lastJailedRef.current[p.id] = p.jailFreeCards
+    })
+  }, [
+    game?.board.map(s => s.buildings).join(','),
+    game?.players.map(p => `${p.bankrupt}-${p.jailFreeCards}-${p.jailed}`).join(','),
+    game?.climate,
+  ]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Event log: capture turn transitions and dice rolls
   const lastTurnLogged = useRef<number>(-1)
   useEffect(() => {
