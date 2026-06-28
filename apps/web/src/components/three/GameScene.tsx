@@ -419,6 +419,63 @@ function Board() {
   )
 }
 
+// Expanding ring + bounce highlight when a player lands on a tile.
+// Tracks isMoving false→true edges per current player.
+function LandingPulse() {
+  const game     = useActiveGame()
+  const players  = useActivePlayers()
+  const [pulses, setPulses] = useState<Array<{ id: number; x: number; z: number; color: string; ttl: number }>>([])
+  const lastPos  = useRef<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!players) return
+    players.forEach(p => {
+      const prev = lastPos.current[p.id]
+      if (prev !== undefined && prev !== p.position) {
+        const pos = getBoardPosition(p.position)
+        const space = game?.board[p.position]
+        const color = space?.type === 'prop'
+          ? (GROUP_COLOR[space.group] ?? '#F5C518')
+          : (SPACE_COLOR[space?.type ?? 'free'] ?? '#F5C518')
+        const id = Date.now() + Math.random()
+        setPulses(ps => [...ps, { id, x: pos[0], z: pos[2], color, ttl: id + 1200 }])
+        setTimeout(() => setPulses(ps => ps.filter(pl => pl.id !== id)), 1200)
+      }
+      lastPos.current[p.id] = p.position
+    })
+  }, [players?.map(p => p.position).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <>
+      {pulses.map(p => <PulseRing key={p.id} x={p.x} z={p.z} color={p.color} />)}
+    </>
+  )
+}
+
+function PulseRing({ x, z, color }: { x: number; z: number; color: string }) {
+  const ref = useRef<Group>(null)
+  const startTime = useRef(0)
+  useFrame((state) => {
+    if (!ref.current) return
+    if (startTime.current === 0) startTime.current = state.clock.elapsedTime
+    const t = state.clock.elapsedTime - startTime.current
+    const k = Math.min(t / 1.0, 1)
+    const scale = 0.6 + k * 2.4
+    ref.current.scale.set(scale, scale, scale)
+    const mat = (ref.current.children[0] as unknown as { material: { opacity: number; transparent: boolean } }).material
+    mat.transparent = true
+    mat.opacity = (1 - k) * 0.85
+  })
+  return (
+    <group ref={ref} position={[x, 0.05, z]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh>
+        <ringGeometry args={[0.35, 0.5, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.85} />
+      </mesh>
+    </group>
+  )
+}
+
 // Ambient floating gold particles — 150 small dots drifting upward, recycled.
 function AmbientParticles() {
   const groupRef = useRef<Group>(null)
@@ -509,6 +566,7 @@ function Scene() {
       {game?.players.map((_, i) => (
         <AnimatedPlayerToken key={i} playerIndex={i} />
       ))}
+      <LandingPulse />
       <Environment preset="forest" />
       <AmbientParticles />
       <EffectComposer multisampling={0}>

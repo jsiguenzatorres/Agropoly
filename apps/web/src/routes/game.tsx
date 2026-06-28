@@ -14,6 +14,9 @@ import { ChatPanel } from '../components/ui/ChatPanel'
 import { ToastStack } from '../components/ui/ToastStack'
 import { LogPanel } from '../components/ui/LogPanel'
 import { LightningFlash } from '../components/ui/LightningFlash'
+import { CardRevealOverlay } from '../components/ui/CardRevealOverlay'
+import { TileEffectFX } from '../components/ui/TileEffectFX'
+import { PurchaseStamp } from '../components/ui/PurchaseStamp'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -90,6 +93,9 @@ export function Component() {
         <ToastStack />
         <LogPanel />
         <LightningFlash mode={mode} />
+        <CardRevealOverlay mode={mode} />
+        <TileEffectFX mode={mode} />
+        <PurchaseStamp mode={mode} />
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>
