@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
 import { useMultiplayerStore } from '../store/multiplayerStore'
@@ -21,6 +21,7 @@ import { MoneyFlowLayer } from '../components/ui/MoneyFlowLayer'
 import { PropertyInspector } from '../components/ui/PropertyInspector'
 import { Celebrations } from '../components/ui/Celebrations'
 import { ClimateDieRoll } from '../components/ui/ClimateDieRoll'
+import { StoryIntro } from '../components/ui/StoryIntro'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -61,6 +62,7 @@ export function Component() {
   const mode = params.get('mode') === 'multi' ? 'multi' : 'solo'
 
   const soloGame  = useGameStore(s => s.game)
+  const soloGameId = useGameStore(s => s.gameId)
   const multiGame = useMultiplayerStore(s => s.game)
   const connected = useMultiplayerStore(s => s.connected)
   const game = mode === 'multi' ? multiGame : soloGame
@@ -75,11 +77,25 @@ export function Component() {
     }
   }, [mode, connected, soloGame, navigate])
 
+  // Story intro: show once per fresh partida. We track the most recently introduced gameId
+  // so it doesn't replay on re-renders, but DOES replay on a new "Nueva partida".
+  const lastIntroGameId = useRef<number>(-1)
+  const [showIntro, setShowIntro] = useState(false)
+  useEffect(() => {
+    if (!game) return
+    const id = mode === 'solo' ? soloGameId : 0  // multi: only on join (no gameId equivalent yet)
+    if (id !== lastIntroGameId.current && mode === 'solo') {
+      lastIntroGameId.current = id
+      setShowIntro(true)
+    }
+  }, [game, soloGameId, mode])
+
   if (!game) return <LoadingBoard />
 
   return (
     <GameModeProvider mode={mode}>
       <div className="w-screen h-screen bg-bfa-deep overflow-hidden relative">
+        {showIntro && <StoryIntro players={game.players} onDone={() => setShowIntro(false)} />}
         {/* Canvas: full bleed on desktop, vertically constrained on mobile so the board
             sits between the scoreboard (top) and action panel (bottom) without gaps */}
         <div className="absolute inset-x-0 top-12 bottom-44 sm:inset-0">
