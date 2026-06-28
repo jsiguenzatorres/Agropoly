@@ -12,6 +12,7 @@ import {
   HOTEL_LEVEL, AUCTION_MIN_BID, CLIMATE_INFO,
 } from '@agropoly/game-engine'
 import { TradeComposeModal } from './TradeModal'
+import { VoiceSettingsButton } from './VoiceSettingsButton'
 import { aiShouldBuy, aiBuildPicks, aiAuctionBid } from '../../lib/ai'
 import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } from '../../lib/voice-command'
 import { toastMoneyIn, toastMoneyOut } from '../../store/toastStore'
@@ -457,6 +458,11 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
       >
         {musicOn ? '🎵 ON' : '🎵 off'}
       </button>
+
+      {/* Voice settings — adjacent to music toggle */}
+      <div className="absolute top-12 left-32 sm:top-4 sm:left-[395px] z-20">
+        <VoiceSettingsButton />
+      </div>
 
       {/* Dice + climate display — top right (smaller on mobile) */}
       {lastDice && (
