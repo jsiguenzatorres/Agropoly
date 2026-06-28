@@ -17,6 +17,7 @@ import { isVoiceCommandSupported, startVoiceCommands, type VoiceCommandHandle } 
 import { toastMoneyIn, toastMoneyOut } from '../../store/toastStore'
 import { logEvent } from '../../store/eventLogStore'
 import { emitMoneyFlow } from '../../store/moneyFlowStore'
+import { useChipFxStore } from '../../store/chipFxStore'
 import { startMusic, stopMusic, setTrack, isMusicEnabled } from '../../lib/music'
 
 const GROUP_NAMES: Record<number, string> = {
@@ -90,6 +91,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const [voiceOn, setVoiceOn] = useState(false)
   const voiceHandle = useRef<VoiceCommandHandle | null>(null)
   const [musicOn, setMusicOn] = useState(false)
+  const chipFx = useChipFxStore(s => s.fx)
 
   // Keyboard shortcuts: ESPACIO/R = roll, B = buy, P = pass, E = end turn, T = trade, L = log, M = mute hint
   useEffect(() => {
@@ -148,6 +150,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
 
   // Detect player-to-player money transfers (rent, collect_from_players) and tax/bank flows.
   // Pair a loser delta with a winner delta of the same magnitude.
+  const flashChip = useChipFxStore(s => s.flash)
   useEffect(() => {
     if (!game) return
     const losses: Array<{ id: string; amt: number }> = []
@@ -167,13 +170,35 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
       const matchIdx = gains.findIndex((g, i) => !usedG.has(i) && g.amt === l.amt && g.id !== l.id)
       if (matchIdx >= 0) {
         usedG.add(matchIdx)
-        emitMoneyFlow(l.id, gains[matchIdx].id, l.amt)
+        const winnerId = gains[matchIdx].id
+        emitMoneyFlow(l.id, winnerId, l.amt)
+        // Chip animations for both players involved
+        flashChip(l.id, 'loss')
+        flashChip(winnerId, 'gain')
+        // If the HUMAN is one of the parties, fire their personal mascot reaction (delayed slightly so
+        // the money-flow arrow visually arrives first)
+        const human = game.players.find(p => mode === 'multi' ? p.id === src.mySessionId : !p.isAI)
+        if (human) {
+          const loser  = game.players.find(p => p.id === l.id)
+          const winner = game.players.find(p => p.id === winnerId)
+          if (loser && loser.id === human.id && winner) {
+            const line = DIALOGUES.pay_to_other(human.tokenId, winner.name, l.amt)
+            setTimeout(() => showMascot(line), 900)
+          } else if (winner && winner.id === human.id && loser) {
+            const line = DIALOGUES.receive_from_other(human.tokenId, loser.name, l.amt)
+            setTimeout(() => showMascot(line), 900)
+          }
+        }
       } else {
         emitMoneyFlow(l.id, 'bank', l.amt)
+        flashChip(l.id, 'loss')
       }
     })
     gains.forEach((g, i) => {
-      if (!usedG.has(i)) emitMoneyFlow('bank', g.id, g.amt)
+      if (!usedG.has(i)) {
+        emitMoneyFlow('bank', g.id, g.amt)
+        flashChip(g.id, 'gain')
+      }
     })
   }, [game?.players.map(p => p.balance).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -378,7 +403,9 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     <>
       {/* Scoreboard — top: column on desktop, horizontal scroll on mobile */}
       <div className="absolute top-2 left-2 right-2 sm:right-auto sm:top-4 sm:left-4 flex flex-row sm:flex-col gap-1.5 sm:gap-2 z-20 overflow-x-auto sm:overflow-visible scrollbar-hide">
-        {game.players.map((p, i) => (
+        {game.players.map((p, i) => {
+          const fx = chipFx[p.id]
+          return (
           <div
             key={p.id}
             data-player-id={p.id}
@@ -386,7 +413,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
               i === game.currentPlayerIndex
                 ? 'border-bfa-gold-500/60 bg-bfa-gold-500/10'
                 : 'opacity-50'
-            } ${p.bankrupt ? 'line-through opacity-20' : ''}`}
+            } ${p.bankrupt ? 'line-through opacity-20' : ''} ${fx === 'loss' ? 'chip-loss' : fx === 'gain' ? 'chip-gain' : ''}`}
           >
             <span className="font-mono text-bfa-gold-500 font-bold max-w-[60px] sm:w-20 truncate">{p.name}</span>
             {p.isAI && (
@@ -397,7 +424,7 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
             <span className="text-bfa-cream/70 whitespace-nowrap">ƒ{p.balance}</span>
             {p.jailed && <span title="En Emergencia">🔒</span>}
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Spectator indicator */}

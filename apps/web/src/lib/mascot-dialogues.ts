@@ -18,6 +18,21 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+// Map a player's tokenId to their "personal" mascot — the one that reacts
+// emotionally to their gains and losses.
+export const TOKEN_MASCOT: Record<string, MascotId> = {
+  maiz:    'maicita',
+  cafe:    'don_cafe',
+  vaca:    'la_vaquita',
+  tractor: 'don_fomento',
+  milpa:   'la_canche',
+  pez:     'la_tormenta',
+}
+
+export function mascotForToken(tokenId: string): MascotId {
+  return TOKEN_MASCOT[tokenId] ?? 'don_fomento'
+}
+
 export const DIALOGUES = {
   // ── Don Fomento + Maicita (originales) ───────────────────────────────────
   roll_human: (): MascotLine => pick([
@@ -136,4 +151,69 @@ export const DIALOGUES = {
     { id: 'don_fomento', text: `${fromName} y ${toName} cerraron un trato. Así se hace negocio.`, mood: 'happy' },
     { id: 'maicita',     text: `¡Trato hecho entre ${fromName} y ${toName}!`,                      mood: 'excited' },
   ]),
+
+  // ── Personal mascot reactions to player's own money events ───────────────
+  // Each mascot reacts in-character to losing money to another player.
+  pay_to_other: (ownTokenId: string, otherName: string, amount: number): MascotLine => {
+    const mascot = mascotForToken(ownTokenId)
+    const variants: Record<MascotId, string[]> = {
+      maicita: [
+        `¡Ay no! ƒ${amount} para ${otherName}... 😢 ¡Pero la próxima la levantamos!`,
+        `Puchica, ƒ${amount} se fueron. ¡Tranquila, ya viene mi turno!`,
+      ],
+      don_fomento: [
+        `Ni modo... ƒ${amount} para ${otherName}. El campo enseña humildad.`,
+        `Ahí van ƒ${amount}. Cuestiones de honor — se paga lo que se debe.`,
+      ],
+      la_vaquita: [
+        `Muuu... ƒ${amount} menos en el establo. ${otherName} se los lleva.`,
+        `¡Ay muuu! Eso dolió: ƒ${amount} a ${otherName}.`,
+      ],
+      don_cafe: [
+        `Ahem... ${otherName} se queda con ƒ${amount} de mi cosecha de café. Veremos.`,
+        `Pago lo justo: ƒ${amount} a ${otherName}. Pero estaré atento.`,
+      ],
+      la_canche: [
+        `¡Ay no, ƒ${amount}! Es muchísimo... ${otherName} qué suertudo.`,
+        `Pero pero pero... ¿ƒ${amount}? ¡Está caro pisar aquí!`,
+      ],
+      la_tormenta: [
+        `⛈️ Truena fuerte: ƒ${amount} salen rumbo a ${otherName}.`,
+        `⚡ Pérdida fría: ƒ${amount} a ${otherName}. Así es la naturaleza.`,
+      ],
+    }
+    return { id: mascot, text: pick(variants[mascot]), mood: 'sad' }
+  },
+
+  // Reactions to receiving money (rent income).
+  receive_from_other: (ownTokenId: string, otherName: string, amount: number): MascotLine => {
+    const mascot = mascotForToken(ownTokenId)
+    const variants: Record<MascotId, string[]> = {
+      maicita: [
+        `¡Yupii! +ƒ${amount} de ${otherName}. ¡Así me gusta!`,
+        `¡Cabal, ƒ${amount}! ${otherName} pagó renta — el patrimonio crece.`,
+      ],
+      don_fomento: [
+        `Buenas inversiones rinden. ƒ${amount} de ${otherName}, bien merecido.`,
+        `Otro pago puntual: ƒ${amount}. El BFA estaría orgulloso.`,
+      ],
+      la_vaquita: [
+        `¡Muuu de la fortuna! +ƒ${amount} de ${otherName}. 🥛`,
+        `Muuu... el establo crece: ƒ${amount} más, gracias ${otherName}.`,
+      ],
+      don_cafe: [
+        `Café con leche y ƒ${amount} de ${otherName}. ¡Buen día!`,
+        `Eso es: ƒ${amount} a la bolsa. ${otherName} pagó como caballero.`,
+      ],
+      la_canche: [
+        `¡Ay sí, ƒ${amount}! ${otherName}, mil gracias.`,
+        `¡Wepa! +ƒ${amount} para mí. ¡Qué chivo!`,
+      ],
+      la_tormenta: [
+        `🌈 Renta cae como lluvia: +ƒ${amount} de ${otherName}.`,
+        `⚡ El campo da: +ƒ${amount}. ${otherName} paga su tributo.`,
+      ],
+    }
+    return { id: mascot, text: pick(variants[mascot]), mood: 'excited' }
+  },
 } as const

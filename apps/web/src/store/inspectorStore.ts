@@ -11,3 +11,7 @@ export const useInspectorStore = create<InspectorStore>((set) => ({
   open:  (id) => set({ selectedSpaceId: id }),
   close: ()   => set({ selectedSpaceId: null }),
 }))
+
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  ;(window as unknown as { __inspectorStore: typeof useInspectorStore }).__inspectorStore = useInspectorStore
+}
