@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Room } from 'colyseus.js'
 import { BOARD_DATA } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card } from '@agropoly/game-engine'
-import type { PendingAction } from './gameStore'
+import type { PendingAction, AuctionState } from './gameStore'
 
 interface MultiplayerStore {
   room: Room | null
@@ -18,6 +18,7 @@ interface MultiplayerStore {
   phase: 'waiting' | 'playing' | 'game_over'
   hostId: string
   isHost: boolean
+  auction: AuctionState | null
 
   setRoom: (room: Room | null) => void
   disconnect: () => void
@@ -38,6 +39,8 @@ interface MultiplayerStore {
   sellBuilding: (spaceId: number) => void
   mortgage:     (spaceId: number) => void
   unmortgage:   (spaceId: number) => void
+  placeBid:     (amount: number) => void
+  passAuction:  () => void
 }
 
 // ── Schema projection: turn an ArraySchema/MapSchema state into plain GameState shape
@@ -115,6 +118,7 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   phase: 'waiting',
   hostId: '',
   isHost: false,
+  auction: null,
 
   setRoom(room) {
     if (!room) {
@@ -130,6 +134,15 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
       const lastDice = (s.lastDice && (s.lastDice.d1 || s.lastDice.d2))
         ? { d1: s.lastDice.d1, d2: s.lastDice.d2, doubles: s.lastDice.doubles }
         : null
+      const auction: AuctionState | null = s.hasAuction && s.auction
+        ? {
+            spaceId:         s.auction.spaceId,
+            currentBid:      s.auction.currentBid,
+            highBidderId:    s.auction.highBidderId || null,
+            currentBidderId: s.auction.currentBidderId,
+            participants:    Array.from(s.auction.participants as Iterable<string>),
+          }
+        : null
       set({
         game: projectGame(s),
         pending: s.pending,
@@ -139,6 +152,7 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
         phase: s.phase,
         hostId: s.hostId,
         isHost: s.hostId === room.sessionId,
+        auction,
       })
     }
 
@@ -171,6 +185,8 @@ export const useMultiplayerStore = create<MultiplayerStore>((set, get) => ({
   sellBuilding(spaceId) { get().room?.send('sell_building', { spaceId }) },
   mortgage(spaceId)   { get().room?.send('mortgage', { spaceId }) },
   unmortgage(spaceId) { get().room?.send('unmortgage', { spaceId }) },
+  placeBid(amount)    { get().room?.send('place_bid', { amount }) },
+  passAuction()       { get().room?.send('pass_auction') },
 }))
 
 if (import.meta.env.DEV) {

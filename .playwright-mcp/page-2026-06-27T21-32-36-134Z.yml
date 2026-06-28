@@ -1,0 +1,22 @@
+- generic [ref=e40]:
+  - generic [ref=e44]:
+    - generic [ref=e45]:
+      - generic [ref=e46]: Josué
+      - generic [ref=e47]: ƒ1500
+    - generic [ref=e48]:
+      - generic [ref=e49]: Don Fomento
+      - generic [ref=e50]: ƒ1500
+    - generic [ref=e51]:
+      - generic [ref=e52]: Maicita
+      - generic [ref=e53]: ƒ1500
+  - generic [ref=e54]:
+    - paragraph [ref=e56]: INICIO
+    - paragraph [ref=e57]: 👤 Josué · ƒ1500
+    - button "🎲 Lanzar Dados" [ref=e59] [cursor=pointer]
+  - generic:
+    - generic: mascot seq=2 line=don_fomento shown=false
+    - img:
+      - generic: BFA
+    - generic:
+      - generic:
+        - paragraph: El BFA confía en vos. ¡Adelante, muchacho!

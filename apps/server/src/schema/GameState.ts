@@ -46,6 +46,14 @@ export class CardState extends Schema {
   @type('string')  effectJson = ''
 }
 
+export class AuctionStateSchema extends Schema {
+  @type('number')   spaceId          = -1
+  @type('number')   currentBid       = 0
+  @type('string')   highBidderId     = ''
+  @type('string')   currentBidderId  = ''
+  @type(['string']) participants     = new ArraySchema<string>()
+}
+
 export class GameStateSchema extends Schema {
   @type('string')          phase              = 'waiting'    // waiting | playing | game_over
   @type('string')          pending            = 'roll'       // roll | buy | pay_rent | pay_tax | cosecha | riesgo | apply_card | jail_choice | end | game_over
@@ -60,6 +68,8 @@ export class GameStateSchema extends Schema {
   @type(DiceState)         lastDice           = new DiceState()
   @type(CardState)         pendingCard        = new CardState()
   @type('boolean')         hasPendingCard     = false
+  @type(AuctionStateSchema) auction           = new AuctionStateSchema()
+  @type('boolean')         hasAuction         = false
 
   @type([PlayerState])     players            = new ArraySchema<PlayerState>()
   @type([BoardSpaceState]) board              = new ArraySchema<BoardSpaceState>()

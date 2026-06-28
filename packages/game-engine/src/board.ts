@@ -90,3 +90,9 @@ export const JAIL_FINE = 50
 export const MAX_JAIL_TURNS = 3
 export const MAX_BUILDINGS = 4
 export const HOTEL_LEVEL = 5
+
+// ─── Victory ────────────────────────────────────────────────────────────────
+// Alternative win condition: net worth ≥ this threshold triggers immediate victory
+export const WEALTH_VICTORY = 5000
+// Minimum auction bid increment
+export const AUCTION_MIN_BID = 10

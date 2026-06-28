@@ -1,0 +1,19 @@
+- generic [ref=e43]:
+  - generic [ref=e48]:
+    - generic [ref=e49]:
+      - generic [ref=e50]: Josué
+      - generic [ref=e51]: ƒ1500
+    - generic [ref=e52]:
+      - generic [ref=e53]: Don Fomento
+      - generic [ref=e54]: ƒ1500
+    - generic [ref=e55]:
+      - generic [ref=e56]: Maicita
+      - generic [ref=e57]: ƒ1500
+  - generic [ref=e58]:
+    - paragraph [ref=e60]: INICIO
+    - paragraph [ref=e61]: 👤 Josué · ƒ1500
+    - button "🎲 Lanzar Dados" [ref=e63] [cursor=pointer]
+  - generic [ref=e65] [cursor=pointer]:
+    - img [ref=e67]:
+      - generic [ref=e72]: BFA
+    - paragraph [ref=e123]: ¡Tu turno! ¡Lanzá los dados con todo!

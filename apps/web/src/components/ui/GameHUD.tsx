@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useGameSource } from '../../store/useGameSource'
 import { sfx } from '../../lib/sfx'
@@ -8,7 +8,7 @@ import { postSoloSession } from '../../lib/sessions-api'
 import {
   canBuild, canMortgage, canUnmortgage, canSellBuilding,
   mortgageValue, unmortgageCost, sellBuildingValue,
-  HOTEL_LEVEL,
+  HOTEL_LEVEL, AUCTION_MIN_BID,
 } from '@agropoly/game-engine'
 
 const GROUP_NAMES: Record<number, string> = {
@@ -24,12 +24,46 @@ function Die({ value }: { value: number }) {
   return <span className="text-3xl">{dots[value] ?? '?'}</span>
 }
 
+function BidControls({ minBid, maxBid, onBid, onPass }: {
+  minBid: number; maxBid: number; onBid: (n: number) => void; onPass: () => void
+}) {
+  const [bid, setBid] = useState(minBid)
+  useEffect(() => { setBid(minBid) }, [minBid])
+  const valid = bid >= minBid && bid <= maxBid
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={minBid}
+          max={maxBid}
+          value={bid}
+          onChange={e => setBid(Number(e.target.value))}
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-bfa-cream text-sm font-mono outline-none focus:border-bfa-gold-500/50"
+        />
+        <span className="text-bfa-cream/40 text-[10px] font-mono whitespace-nowrap">
+          min ƒ{minBid} · max ƒ{maxBid}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => valid && onBid(bid)} disabled={!valid} className="btn-gold flex-1 text-sm py-2">
+          💰 Pujar ƒ{bid}
+        </button>
+        <button onClick={onPass} className="btn-secondary flex-1 text-sm py-2">
+          ❌ Pasar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
   const src = useGameSource(mode)
   const { game, pending, lastDice, pendingCard, pendingAmount, isMoving,
     rollDice, confirmBuy, skipBuy, confirmRent, confirmTax,
     drawCard, applyCard, payJailFine, rollForJail, endTurn,
     build, sellBuilding, mortgage, unmortgage,
+    placeBid, passAuction, auction,
   } = src
   // Mascot/EduTip state lives only in the local gameStore — both modes use it
   const showMascot = useGameStore(s => s.showMascot)
@@ -130,6 +164,23 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
     return () => clearTimeout(t)
   }, [pending, game?.currentPlayerIndex, isMoving]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // AI auction bidder — solo mode only. Triggers whenever the bidder changes.
+  useEffect(() => {
+    if (mode !== 'solo') return
+    if (!game || !auction || pending !== 'auction') return
+    const bidder = game.players.find(p => p.id === auction.currentBidderId)
+    if (!bidder?.isAI || bidder.bankrupt) return
+    const space = game.board[auction.spaceId]
+    if (!space) return
+    const t = setTimeout(() => {
+      const nextBid = auction.currentBid + AUCTION_MIN_BID
+      const cap = Math.floor(space.price * 0.8)
+      if (nextBid <= cap && nextBid <= bidder.balance * 0.7) placeBid(nextBid)
+      else passAuction()
+    }, 700)
+    return () => clearTimeout(t)
+  }, [pending, auction?.currentBidderId, auction?.currentBid]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!game || !player) return null
   const space = game.board[player.position]
 
@@ -196,8 +247,49 @@ export function GameHUD({ mode = 'solo' }: { mode?: 'solo' | 'multi' }) {
           </div>
         )}
 
+        {/* Auction panel — visible to everyone when an auction is running */}
+        {pending === 'auction' && auction && (() => {
+          const auctionSpace = game.board[auction.spaceId]
+          const bidder       = game.players.find(p => p.id === auction.currentBidderId)
+          const highBidder   = auction.highBidderId ? game.players.find(p => p.id === auction.highBidderId) : null
+          const isMyBidTurn  = mode === 'multi'
+            ? bidder?.id === src.mySessionId
+            : !!bidder && !bidder.isAI
+          const minBid = auction.currentBid + AUCTION_MIN_BID
+          return (
+            <div className="glass-card p-3 w-full flex flex-col gap-2">
+              <p className="text-bfa-gold-500 font-display text-sm tracking-wider text-center">
+                🔨 SUBASTA · {auctionSpace?.name}
+              </p>
+              <p className="text-center text-bfa-cream/70 text-xs font-mono">
+                Precio base ƒ{auctionSpace?.price ?? 0}
+                {highBidder
+                  ? <> · Mejor oferta <span className="text-bfa-gold-500">ƒ{auction.currentBid}</span> ({highBidder.name})</>
+                  : <> · sin ofertas</>}
+              </p>
+              <p className="text-center text-bfa-cream/50 text-xs font-mono">
+                Turno: <span className="text-bfa-gold-500">{bidder?.name ?? '—'}</span>
+                {' · '}{auction.participants.length} aún en subasta
+              </p>
+              {isMyBidTurn && bidder && (
+                <BidControls
+                  minBid={minBid}
+                  maxBid={bidder.balance}
+                  onBid={amount => placeBid(amount)}
+                  onPass={passAuction}
+                />
+              )}
+              {!isMyBidTurn && (
+                <p className="text-center text-bfa-cream/40 text-xs animate-pulse font-mono">
+                  Esperando a {bidder?.name ?? '...'}
+                </p>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Buttons */}
-        {isHuman && !locked && (
+        {isHuman && !locked && pending !== 'auction' && (
           <div className="flex flex-col gap-2 w-full">
 
             {pending === 'roll' && (

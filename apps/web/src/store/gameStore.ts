@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import {
-  BOARD_DATA, STARTING_BALANCE, GO_AMOUNT,
+  BOARD_DATA, STARTING_BALANCE, GO_AMOUNT, WEALTH_VICTORY, AUCTION_MIN_BID,
   JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS,
   calcRent, canBuild, canMortgage, canUnmortgage, canSellBuilding,
-  mortgageValue, unmortgageCost, sellBuildingValue,
+  mortgageValue, unmortgageCost, sellBuildingValue, getNetWorth,
   shuffle, COSECHA_DECK, RIESGO_DECK,
 } from '@agropoly/game-engine'
 import type { GameState, Player, BoardSpace, Card, TokenId, Difficulty } from '@agropoly/game-engine'
@@ -14,7 +14,15 @@ import type { EduTip } from '../lib/edu-tips'
 export type PendingAction =
   | 'roll' | 'buy' | 'pay_rent' | 'pay_tax'
   | 'cosecha' | 'riesgo' | 'apply_card'
-  | 'jail_choice' | 'end' | 'game_over'
+  | 'jail_choice' | 'auction' | 'end' | 'game_over'
+
+export interface AuctionState {
+  spaceId: number
+  currentBid: number          // 0 = no bids yet
+  highBidderId: string | null
+  participants: string[]      // player IDs still in (haven't passed)
+  currentBidderId: string     // whose turn it is to bid/pass
+}
 
 export interface PlayerSetup {
   name: string
@@ -33,6 +41,8 @@ interface GameStore {
   lastDice: { d1: number; d2: number; doubles: boolean } | null
   pendingCard: Card | null
   pendingAmount: number
+
+  auction: AuctionState | null
 
   mascot: MascotLine | null
   mascotSeq: number       // monotonically increasing; triggers MascotOverlay effect even for same text
@@ -60,6 +70,8 @@ interface GameStore {
   sellBuilding: (spaceId: number) => void
   mortgage: (spaceId: number) => void
   unmortgage: (spaceId: number) => void
+  placeBid: (amount: number) => void
+  passAuction: () => void
   reset: () => void
 }
 
@@ -107,6 +119,7 @@ export const useGameStore = create<GameStore>()(
     sessionId: '',
     startedAt: 0,
     isMoving: false,
+    auction: null,
     mascot: null,
     mascotSeq: 0,
     eduTip: null,
@@ -269,7 +282,71 @@ export const useGameStore = create<GameStore>()(
     },
 
     skipBuy() {
-      set(s => { s.pending = 'end' })
+      set(s => {
+        if (!s.game) { s.pending = 'end'; return }
+        const player = s.game.players[s.game.currentPlayerIndex]
+        const space = s.game.board[player.position]
+        if (!space || space.ownerId) { s.pending = 'end'; return }
+        // Start auction with all OTHER non-bankrupt players
+        const eligible = s.game.players
+          .filter(p => p.id !== player.id && !p.bankrupt)
+          .map(p => p.id)
+        if (eligible.length === 0) { s.pending = 'end'; return }
+        s.auction = {
+          spaceId: space.id,
+          currentBid: 0,
+          highBidderId: null,
+          participants: eligible,
+          currentBidderId: eligible[0],
+        }
+        s.pending = 'auction'
+      })
+    },
+
+    placeBid(amount) {
+      set(s => {
+        if (!s.game || !s.auction) return
+        const space = s.game.board[s.auction.spaceId]
+        if (!space) return
+        const bidder = s.game.players.find(p => p.id === s.auction!.currentBidderId)
+        if (!bidder || bidder.bankrupt) return
+        const minBid = Math.max(s.auction.currentBid + AUCTION_MIN_BID, AUCTION_MIN_BID)
+        if (amount < minBid || amount > bidder.balance) return
+        s.auction.currentBid = amount
+        s.auction.highBidderId = bidder.id
+        // Advance to next participant
+        const idx = s.auction.participants.indexOf(bidder.id)
+        const nextIdx = (idx + 1) % s.auction.participants.length
+        s.auction.currentBidderId = s.auction.participants[nextIdx]
+      })
+    },
+
+    passAuction() {
+      set(s => {
+        if (!s.game || !s.auction) return
+        const currentId = s.auction.currentBidderId
+        s.auction.participants = s.auction.participants.filter(id => id !== currentId)
+        // If nobody left to bid, finalize
+        if (s.auction.participants.length === 0
+            || (s.auction.participants.length === 1 && s.auction.participants[0] === s.auction.highBidderId)) {
+          if (s.auction.highBidderId && s.auction.currentBid > 0) {
+            const winner = s.game.players.find(p => p.id === s.auction!.highBidderId)
+            const space = s.game.board[s.auction.spaceId]
+            if (winner && space) {
+              winner.balance -= s.auction.currentBid
+              space.ownerId = winner.id
+              winner.properties.push(space.id)
+            }
+          }
+          s.auction = null
+          s.pending = 'end'
+          return
+        }
+        // Advance bidder
+        const idx = s.auction.participants.indexOf(currentId)
+        const nextIdx = idx >= 0 ? idx % s.auction.participants.length : 0
+        s.auction.currentBidderId = s.auction.participants[Math.max(0, nextIdx)]
+      })
     },
 
     confirmRent() {
@@ -464,6 +541,13 @@ export const useGameStore = create<GameStore>()(
         const alive = activePlayers(s.game.players)
         if (alive.length <= 1) {
           s.game.winner = alive[0]?.id ?? null
+          s.pending = 'game_over'
+          return
+        }
+        // Wealth victory: any active player with net worth ≥ WEALTH_VICTORY wins immediately
+        const wealthWinner = alive.find(p => getNetWorth(p, s.game!.board) >= WEALTH_VICTORY)
+        if (wealthWinner) {
+          s.game.winner = wealthWinner.id
           s.pending = 'game_over'
           return
         }

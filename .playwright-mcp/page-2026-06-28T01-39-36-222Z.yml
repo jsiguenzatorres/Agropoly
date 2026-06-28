@@ -1,0 +1,24 @@
+- generic [ref=e66]:
+  - generic [ref=e70]:
+    - generic [ref=e71]:
+      - generic [ref=e72]: Host
+      - generic [ref=e73]: ƒ1500
+    - generic [ref=e74]:
+      - generic [ref=e75]: Guest
+      - generic [ref=e76]: ƒ1500
+  - generic [ref=e124]:
+    - generic [ref=e125]:
+      - generic [ref=e126]: ⚃
+      - generic [ref=e127]: ⚅
+    - paragraph [ref=e128]: = 10
+  - generic [ref=e77]:
+    - paragraph [ref=e79]: Emergencia Climática
+    - paragraph [ref=e80]: 👤 Host · ƒ1500
+    - button "✓ Terminar turno" [ref=e129] [cursor=pointer]
+  - generic:
+    - generic:
+      - img:
+        - generic: BFA
+      - generic:
+        - generic:
+          - paragraph: El BFA confía en vos. ¡Adelante, muchacho!

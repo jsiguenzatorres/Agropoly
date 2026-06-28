@@ -1,0 +1,10 @@
+- generic [ref=e48]:
+  - generic [ref=e49]:
+    - paragraph [ref=e50]: Sala
+    - paragraph [ref=e51]: KUgKX0JLR
+    - paragraph [ref=e52]: Comparte este código con tus amigos
+  - generic [ref=e53]:
+    - paragraph [ref=e54]: Jugadores (0)
+    - paragraph [ref=e56]: Esperando al menos un jugador más…
+  - paragraph [ref=e57]: Esperando al host…
+  - button "Salir" [ref=e58] [cursor=pointer]

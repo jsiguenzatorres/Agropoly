@@ -1,6 +1,6 @@
 import { useGameStore } from './gameStore'
 import { useMultiplayerStore } from './multiplayerStore'
-import type { PendingAction } from './gameStore'
+import type { PendingAction, AuctionState } from './gameStore'
 import type { GameState, Card } from '@agropoly/game-engine'
 
 export interface GameSource {
@@ -30,6 +30,9 @@ export interface GameSource {
   sellBuilding: (spaceId: number) => void
   mortgage:     (spaceId: number) => void
   unmortgage:   (spaceId: number) => void
+  placeBid:     (amount: number) => void
+  passAuction:  () => void
+  auction:      AuctionState | null
   reset:        () => void
 }
 
@@ -62,6 +65,9 @@ export function useGameSource(mode: 'solo' | 'multi'): GameSource {
       sellBuilding:  multi.sellBuilding,
       mortgage:      multi.mortgage,
       unmortgage:    multi.unmortgage,
+      placeBid:      multi.placeBid,
+      passAuction:   multi.passAuction,
+      auction:       multi.auction,
       reset:         multi.disconnect,
     }
   }
@@ -87,6 +93,9 @@ export function useGameSource(mode: 'solo' | 'multi'): GameSource {
     sellBuilding:  solo.sellBuilding,
     mortgage:      solo.mortgage,
     unmortgage:    solo.unmortgage,
+    placeBid:      solo.placeBid,
+    passAuction:   solo.passAuction,
+    auction:       solo.auction,
     reset:         solo.reset,
   }
 }

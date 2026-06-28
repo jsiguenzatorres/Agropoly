@@ -1,6 +1,6 @@
 import { Room, Client } from 'colyseus'
 import {
-  BOARD_DATA, STARTING_BALANCE, GO_AMOUNT,
+  BOARD_DATA, STARTING_BALANCE, GO_AMOUNT, WEALTH_VICTORY, AUCTION_MIN_BID,
   JAIL_POSITION, JAIL_FINE, MAX_JAIL_TURNS, HOTEL_LEVEL,
   calcRent, canBuild, getNetWorth,
   canMortgage, canUnmortgage, canSellBuilding,
@@ -68,6 +68,14 @@ export class GameRoom extends Room<GameStateSchema> {
     this.onMessage('unmortgage',
       (client, msg: { spaceId: number }) =>
         this.guard(client, () => this.unmortgage(msg?.spaceId))
+    )
+    // Auction messages — guarded by current bidder, not current player
+    this.onMessage('place_bid',
+      (client, msg: { amount: number }) =>
+        this.auctionGuard(client, () => this.placeBid(msg?.amount))
+    )
+    this.onMessage('pass_auction',
+      client => this.auctionGuard(client, () => this.passAuction())
     )
 
     console.log(`[GameRoom] Created — roomId=${this.roomId}`)
@@ -141,8 +149,16 @@ export class GameRoom extends Room<GameStateSchema> {
 
   private guard(client: Client, fn: () => void) {
     if (this.state.phase !== 'playing') return
+    if (this.state.hasAuction) return  // no regular turn actions during auction
     const current = this.state.players[this.state.currentPlayerIndex]
     if (!current || current.id !== client.sessionId) return
+    fn()
+  }
+
+  private auctionGuard(client: Client, fn: () => void) {
+    if (this.state.phase !== 'playing') return
+    if (!this.state.hasAuction) return
+    if (this.state.auction.currentBidderId !== client.sessionId) return
     fn()
   }
 
@@ -253,7 +269,71 @@ export class GameRoom extends Room<GameStateSchema> {
   }
 
   private skipBuy() {
-    this.state.pending = 'end'
+    const player = this.state.players[this.state.currentPlayerIndex]
+    if (!player) { this.state.pending = 'end'; return }
+    const space = this.state.board[player.position]
+    if (!space || space.ownerId) { this.state.pending = 'end'; return }
+    const eligible: string[] = []
+    this.state.players.forEach((p: PlayerState) => {
+      if (p.id !== player.id && !p.bankrupt) eligible.push(p.id)
+    })
+    if (eligible.length === 0) { this.state.pending = 'end'; return }
+    this.state.auction.spaceId         = space.id
+    this.state.auction.currentBid      = 0
+    this.state.auction.highBidderId    = ''
+    this.state.auction.currentBidderId = eligible[0]
+    this.state.auction.participants.clear()
+    eligible.forEach(id => this.state.auction.participants.push(id))
+    this.state.hasAuction = true
+    this.state.pending    = 'auction'
+  }
+
+  private placeBid(amount: number) {
+    if (!this.state.hasAuction) return
+    if (typeof amount !== 'number' || isNaN(amount)) return
+    const a = this.state.auction
+    const bidder = this.state.players.find((p: PlayerState) => p.id === a.currentBidderId)
+    if (!bidder || bidder.bankrupt) return
+    const minBid = Math.max(a.currentBid + AUCTION_MIN_BID, AUCTION_MIN_BID)
+    if (amount < minBid || amount > bidder.balance) return
+    a.currentBid = amount
+    a.highBidderId = bidder.id
+    const idx = a.participants.indexOf(bidder.id)
+    const nextIdx = (idx + 1) % a.participants.length
+    a.currentBidderId = a.participants[nextIdx] ?? bidder.id
+  }
+
+  private passAuction() {
+    if (!this.state.hasAuction) return
+    const a = this.state.auction
+    const currentId = a.currentBidderId
+    // Remove currentId from participants
+    const idx = a.participants.indexOf(currentId)
+    if (idx >= 0) a.participants.splice(idx, 1)
+    // Finalize if 0 participants left, or only the high bidder remains
+    const onlyHighLeft = a.participants.length === 1 && a.participants[0] === a.highBidderId
+    if (a.participants.length === 0 || onlyHighLeft) {
+      if (a.highBidderId && a.currentBid > 0) {
+        const winner = this.state.players.find((p: PlayerState) => p.id === a.highBidderId)
+        const space = this.state.board[a.spaceId]
+        if (winner && space) {
+          winner.balance -= a.currentBid
+          space.ownerId = winner.id
+          winner.properties.push(space.id)
+        }
+      }
+      this.state.hasAuction = false
+      a.spaceId = -1
+      a.currentBid = 0
+      a.highBidderId = ''
+      a.currentBidderId = ''
+      a.participants.clear()
+      this.state.pending = 'end'
+      return
+    }
+    // Advance bidder
+    const safeIdx = idx >= 0 && idx < a.participants.length ? idx : 0
+    a.currentBidderId = a.participants[safeIdx] ?? a.participants[0] ?? ''
   }
 
   private confirmRent() {
@@ -437,6 +517,17 @@ export class GameRoom extends Room<GameStateSchema> {
     const alive = this.state.players.filter((p: PlayerState) => !p.bankrupt)
     if (alive.length <= 1) {
       this.state.winnerId = alive[0]?.id ?? ''
+      this.state.phase = 'game_over'
+      this.state.pending = 'game_over'
+      this.persistFinalSession()
+      return
+    }
+    // Wealth victory: any player with net worth ≥ WEALTH_VICTORY wins
+    const board = this.toEngineBoard()
+    const enginePlayers = this.toEnginePlayers()
+    const wealthWinner = enginePlayers.find(p => !p.bankrupt && getNetWorth(p, board) >= WEALTH_VICTORY)
+    if (wealthWinner) {
+      this.state.winnerId = wealthWinner.id
       this.state.phase = 'game_over'
       this.state.pending = 'game_over'
       this.persistFinalSession()
