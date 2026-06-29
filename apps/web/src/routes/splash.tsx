@@ -160,6 +160,7 @@ export function Component() {
             {[
               { label: 'Nueva Partida',     gold: true,  onClick: () => navigate('/lobby') },
               { label: '📖 Cómo Jugar',     gold: false, onClick: () => setShowRules(true) },
+              { label: '🌾 Historias del Campo', gold: false, onClick: () => navigate('/historias') },
               { label: '🏆 Leaderboard',    gold: false, onClick: () => navigate('/leaderboard') },
               { label: '🎖️ Mis Logros',     gold: false, onClick: () => navigate('/achievements') },
               { label: 'Dashboard Analytics', gold: false, onClick: () => navigate('/dashboard') },

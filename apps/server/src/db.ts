@@ -52,6 +52,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_events_ts        ON analytics_events(ts);
   CREATE INDEX IF NOT EXISTS idx_events_type      ON analytics_events(event_type);
   CREATE INDEX IF NOT EXISTS idx_events_session   ON analytics_events(session_id);
+
+  CREATE TABLE IF NOT EXISTS historias_content (
+    mascota_id  TEXT PRIMARY KEY,
+    content     TEXT NOT NULL,       -- JSON-encoded full Historia object
+    updated_at  INTEGER NOT NULL
+  );
 `)
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -318,4 +324,129 @@ export interface RecentEvent {
 }
 export function recentEvents(fromTs = 0, toTs = Date.now(), limit = 100): RecentEvent[] {
   return stmtRecentEvents.all({ from: fromTs, to: toTs, limit }) as RecentEvent[]
+}
+
+// ─── Historias del Campo ──────────────────────────────────────────────────
+
+export interface Historia {
+  mascotaId:       string
+  nombre:          string
+  rubro:           string
+  zona:            string
+  saludo:          string
+  origen:          string
+  rubroDescripcion: string
+  rubroStatLabel:  string
+  rubroStatValue:  string
+  rubroStatNote:   string
+  desafios:        string[]
+  bfaProducto:     string
+  bfaDescripcion:  string
+  retoJugador:     string
+  // Indicates the content still uses default seed text and BFA hasn't validated yet
+  pendingReview:   boolean
+}
+
+const HISTORIAS_SEED: Historia[] = [
+  {
+    mascotaId: 'maicita', nombre: 'Maicita', rubro: 'Maíz', zona: 'Oriente: Usulután, San Miguel, La Unión',
+    saludo: '¡Pues qué onda! Soy Maicita, la mazorca que alimenta cada hogar salvadoreño.',
+    origen: 'Vengo de los maizales del oriente, donde la tierra todavía huele a tortilla recién hecha. Desde antes que llegara el BFA en 1973, mi familia ha sembrado el maíz que mantiene viva la mesa de El Salvador.',
+    rubroDescripcion: 'El maíz no es solo un cultivo: es identidad. De cada cosecha sale el atol, la tortilla, los tamales — y miles de familias viven de él.',
+    rubroStatLabel: 'Producción nacional anual', rubroStatValue: '≈ 700,000 TM', rubroStatNote: 'Cultivo de seguridad alimentaria',
+    desafios: ['Sequías cada vez más largas', 'Costo creciente de fertilizantes', 'Precios bajos al productor', 'Plagas como el gusano cogollero'],
+    bfaProducto: 'Crédito Granos Básicos BFA',
+    bfaDescripcion: 'Financiamiento para insumos, semilla certificada y avío de cosecha — diseñado para el ciclo del maíz y frijol.',
+    retoJugador: 'En AGROPOLY, completar el grupo de Occidente te da renta múltiple: igual que diversificar tu cosecha protege tu finca en la vida real.',
+    pendingReview: true,
+  },
+  {
+    mascotaId: 'don_cafe', nombre: 'Don Café', rubro: 'Café', zona: 'Cordilleras Apaneca-Ilamatepec y Tecapa-Chinameca',
+    saludo: 'Buen día, joven. Soy Don Café — el grano que puso a El Salvador en el mapa del mundo.',
+    origen: 'Mi historia es la historia del país: durante el siglo XX llegué a representar más de la mitad de las exportaciones nacionales. Hoy, aunque la roya y los precios me golpean, sigo dando trabajo en las alturas cafetaleras.',
+    rubroDescripcion: 'El café salvadoreño es de altura, sombra y tradición. Cada quintal pasa por manos de pequeños caficultores que luchan por mantener la calidad ante la roya y el cambio climático.',
+    rubroStatLabel: 'Aporte histórico al PIB', rubroStatValue: '≈ 5% (años pico)', rubroStatNote: 'Hoy menor pero estratégico',
+    desafios: ['Roya y broca', 'Volatilidad del precio internacional', 'Renovación de cafetales viejos', 'Falta de relevo generacional'],
+    bfaProducto: 'Crédito Renovación de Cafetales',
+    bfaDescripcion: 'Financiamiento BFA a tasa preferencial para renovar plantaciones, sembrar variedades resistentes a roya y mejorar productividad.',
+    retoJugador: 'En el juego, invertir en hoteles te da rentas muy altas — pero requiere paciencia. Lo mismo pasa con renovar un cafetal: la cosecha tarda 3 años, pero rinde por décadas.',
+    pendingReview: true,
+  },
+  {
+    mascotaId: 'la_vaquita', nombre: 'La Vaquita BFA', rubro: 'Ganadería y lácteos', zona: 'Sonsonate, La Unión, Chalatenango',
+    saludo: '¡Muuu! Soy La Vaquita BFA — el orgullo del establo salvadoreño desde 1973.',
+    origen: 'El BFA me dio nombre porque desde su fundación impulsó la modernización ganadera. Hoy somos miles de productores familiares que abastecemos leche, queso y carne para todo el país.',
+    rubroDescripcion: 'El sector lácteo emplea decenas de miles de familias. La leche fresca de Sonsonate y Chalatenango llega cada mañana a las queserías artesanales que sostienen la economía rural.',
+    rubroStatLabel: 'Ganaderos en el país', rubroStatValue: '≈ 27,000 productores', rubroStatNote: 'Mayoría son familias pequeñas',
+    desafios: ['Costo de alimento balanceado', 'Calidad sanitaria del hato', 'Pasturas afectadas por sequía', 'Competencia de lácteos importados'],
+    bfaProducto: 'Crédito Ganadero BFA',
+    bfaDescripcion: 'Financiamiento para adquisición de vientres, mejoramiento genético, equipo de ordeño e infraestructura.',
+    retoJugador: 'En AGROPOLY, construir casas antes que hoteles es estrategia segura. Igual que un ganadero: primero el establo y el pasto, luego la planta procesadora.',
+    pendingReview: true,
+  },
+  {
+    mascotaId: 'don_fomento', nombre: 'Don Fomento', rubro: 'Mecanización y agronegocio', zona: 'Llanuras y zonas planas: Zapotitán, Bajo Lempa, San Miguel',
+    saludo: 'Bienvenido al campo, amigo. Soy Don Fomento — la maquinaria que modernizó el agro salvadoreño.',
+    origen: 'Llegué con la fundación del BFA en 1973, cuando el país necesitaba pasar del azadón al tractor. Desde entonces represento el agronegocio organizado: caña, arroz, hortalizas a escala.',
+    rubroDescripcion: 'La mecanización agrícola multiplica la productividad. Un tractor moderno hace en una mañana el trabajo de diez peones — pero el acceso a maquinaria sigue siendo limitado para muchos.',
+    rubroStatLabel: 'Productos financiables BFA', rubroStatValue: 'Tractores, cosechadoras, riego', rubroStatNote: 'Hasta 10 años de plazo',
+    desafios: ['Alto costo inicial de equipo', 'Mantenimiento técnico especializado', 'Capacitación de operadores', 'Repuestos importados'],
+    bfaProducto: 'Crédito Equipos y Maquinaria Agrícola',
+    bfaDescripcion: 'Financiamiento de largo plazo para adquisición de maquinaria nueva o usada, con tasas y plazos diseñados para amortizar con la producción.',
+    retoJugador: 'En el juego, comprar propiedades caras al inicio limita tu flujo pero da renta alta después. La mecanización funciona igual: gran inversión, gran retorno multianual.',
+    pendingReview: true,
+  },
+  {
+    mascotaId: 'la_canche', nombre: 'La Canche', rubro: 'Agricultura familiar diversificada', zona: 'Cabañas, Chalatenango, Morazán',
+    saludo: '¡Hola, vos! Soy La Canche — la milpa diversificada de la agricultura familiar.',
+    origen: 'Represento a las familias que siembran maíz, frijol, ayote, loroco y hortalizas en parcelas pequeñas. Somos la mayoría de productores del país, los que mantenemos viva la cocina salvadoreña con productos frescos.',
+    rubroDescripcion: 'La agricultura familiar abastece los mercados locales y garantiza variedad nutricional. No producimos a gran escala, pero somos la columna vertebral del consumo interno.',
+    rubroStatLabel: 'Productores familiares', rubroStatValue: '≈ 325,000 familias', rubroStatNote: 'Pieza clave de seguridad alimentaria',
+    desafios: ['Acceso limitado a mercados', 'Pérdidas post-cosecha', 'Falta de riego', 'Vulnerabilidad climática'],
+    bfaProducto: 'Programa Agricultura Familiar',
+    bfaDescripcion: 'Créditos pequeños, asistencia técnica y capacitación BFA orientados al pequeño productor diversificado.',
+    retoJugador: 'En AGROPOLY, tener variedad de propiedades baratas también gana partidas — no solo las caras. La diversificación es estrategia, tanto en el tablero como en la milpa.',
+    pendingReview: true,
+  },
+  {
+    mascotaId: 'la_tormenta', nombre: 'La Tormenta', rubro: 'Resiliencia climática', zona: 'Zonas vulnerables: Bajo Lempa, costa, valles bajos',
+    saludo: '⛈️ Soy La Tormenta — el reto climático que toda finca salvadoreña aprende a enfrentar.',
+    origen: 'No soy mascota, soy realidad. Desde el huracán Mitch en 1998 hasta las tormentas tropicales recientes, mi paso ha redefinido cómo el agro debe planificar. El BFA respondió creando productos de recuperación post-desastre.',
+    rubroDescripcion: 'El cambio climático intensifica fenómenos extremos: sequías más largas, tormentas más fuertes. La resiliencia ya no es opcional — es supervivencia productiva.',
+    rubroStatLabel: 'Eventos relevantes SV', rubroStatValue: 'Mitch (1998), Ida (2009), Bonnie (2022)', rubroStatNote: 'Cada uno marcó política agrícola',
+    desafios: ['Pérdida total de cosecha', 'Daño a infraestructura productiva', 'Descapitalización del productor', 'Adaptación de cultivos al nuevo clima'],
+    bfaProducto: 'Seguro Agropecuario + Crédito Recuperación',
+    bfaDescripcion: 'Cobertura ante eventos climáticos extremos y línea de crédito blanda para reactivar la producción tras desastre.',
+    retoJugador: 'En el juego, la carta climática puede multiplicar tu cosecha o arruinarla. Igual en la vida real: el agricultor que tiene seguro y reserva, sobrevive y crece.',
+    pendingReview: true,
+  },
+]
+
+const insertHistoria = db.prepare(`
+  INSERT OR REPLACE INTO historias_content (mascota_id, content, updated_at)
+  VALUES (@mascotaId, @content, @updatedAt)
+`)
+const stmtGetHistoria  = db.prepare(`SELECT content FROM historias_content WHERE mascota_id = ?`)
+const stmtAllHistorias = db.prepare(`SELECT mascota_id AS mascotaId, content, updated_at AS updatedAt FROM historias_content ORDER BY mascota_id`)
+
+// Seed on first boot — only inserts if the row doesn't exist
+HISTORIAS_SEED.forEach(h => {
+  const existing = stmtGetHistoria.get(h.mascotaId)
+  if (!existing) {
+    insertHistoria.run({ mascotaId: h.mascotaId, content: JSON.stringify(h), updatedAt: Date.now() })
+  }
+})
+
+export function getAllHistorias(): Historia[] {
+  const rows = stmtAllHistorias.all() as Array<{ mascotaId: string; content: string; updatedAt: number }>
+  return rows.map(r => JSON.parse(r.content) as Historia)
+}
+
+export function getHistoria(mascotaId: string): Historia | null {
+  const row = stmtGetHistoria.get(mascotaId) as { content: string } | undefined
+  return row ? (JSON.parse(row.content) as Historia) : null
+}
+
+export function updateHistoria(mascotaId: string, h: Historia) {
+  insertHistoria.run({ mascotaId, content: JSON.stringify(h), updatedAt: Date.now() })
 }

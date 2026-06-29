@@ -12,12 +12,16 @@ import educationRoutes   from './api/education'
 import leaderboardRoutes from './api/leaderboard'
 import sessionsRoutes    from './api/sessions'
 import analyticsRoutes   from './api/analytics'
+import historiasRoutes   from './api/historias'
 import { GameRoom }      from './rooms/GameRoom'
 
 const app = new Hono()
 
 app.use('*', logger())
-app.use('*', cors({ origin: process.env.WEB_URL ?? 'http://localhost:5173' }))
+app.use('*', cors({
+  origin:      process.env.WEB_URL ?? 'http://localhost:5173',
+  credentials: true,  // required for admin cookies on cross-origin requests
+}))
 
 app.get('/health', c => c.json({ status: 'ok', service: 'agropoly-server' }))
 
@@ -26,6 +30,7 @@ app.route('/api/education',   educationRoutes)
 app.route('/api/leaderboard', leaderboardRoutes)
 app.route('/api/sessions',    sessionsRoutes)
 app.route('/api/analytics',   analyticsRoutes)
+app.route('/api/historias',   historiasRoutes)
 
 const PORT = Number(process.env.PORT ?? 2567)
 

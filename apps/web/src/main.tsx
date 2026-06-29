@@ -46,6 +46,14 @@ const router = createBrowserRouter([
     path: '/achievements',
     lazy: () => import('./routes/achievements'),
   },
+  {
+    path: '/historias',
+    lazy: () => import('./routes/historias'),
+  },
+  {
+    path: '/admin/historias',
+    lazy: () => import('./routes/admin-historias'),
+  },
 ])
 
 createRoot(document.getElementById('root')!).render(

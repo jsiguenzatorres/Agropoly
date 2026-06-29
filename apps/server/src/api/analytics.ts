@@ -12,7 +12,7 @@ const eventSchema = z.object({
   sessionId: z.string().nullable().optional(),
   userName:  z.string().nullable().optional(),
   type:      z.string().min(1).max(64),
-  payload:   z.record(z.unknown()).nullable().optional(),
+  payload:   z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
 const batchSchema = z.object({
