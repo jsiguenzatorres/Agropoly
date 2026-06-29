@@ -2,6 +2,25 @@ import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import type { Mood } from '../../lib/mascot-dialogues'
 import { sfx } from '../../lib/sfx'
+import { speak, stopSpeech } from '../../lib/speech'
+
+// Strip emoji/icons from the text so the TTS engine doesn't try to spell them out
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{1F300}-\u{1F9FF}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Pitch/rate per mascot — quick character flavor without TTS voice changes
+const SPEECH_TONE: Record<string, { rate: number; pitch: number }> = {
+  don_fomento: { rate: 0.9,  pitch: 0.85 },  // sage, lower & slower
+  don_cafe:    { rate: 0.92, pitch: 0.9  },
+  la_vaquita:  { rate: 1.0,  pitch: 1.05 },
+  maicita:     { rate: 1.08, pitch: 1.25 },  // young & cheerful
+  la_canche:   { rate: 1.05, pitch: 1.2  },
+  la_tormenta: { rate: 0.95, pitch: 0.8  },  // dark, menacing
+}
 
 // ─── Bubble pop keyframe ───────────────────────────────────────────────────────
 const BUBBLE_POP = `
@@ -548,6 +567,12 @@ export function MascotOverlay() {
       cues[mascot.id]?.()
     } catch { /* audio context may be locked */ }
 
+    // Narrate the line — slight delay so the SFX cue plays first
+    const tone = SPEECH_TONE[mascot.id] ?? { rate: 1.0, pitch: 1.0 }
+    timers.current.push(setTimeout(() => {
+      speak(cleanForSpeech(mascot.text), tone)
+    }, 350))
+
     // one frame later: trigger CSS transition into view
     timers.current.push(setTimeout(() => setShown(true), 20))
 
@@ -557,11 +582,12 @@ export function MascotOverlay() {
       timers.current.push(setTimeout(() => dismissMascot(), 450))
     }, 4500))
 
-    return clearAll
+    return () => { clearAll(); stopSpeech() }
   }, [mascotSeq]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDismiss = () => {
     clearAll(); timers.current = []
+    stopSpeech()
     setShown(false)
     timers.current.push(setTimeout(() => dismissMascot(), 450))
   }

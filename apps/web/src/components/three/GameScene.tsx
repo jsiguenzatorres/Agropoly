@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Environment, Text } from '@react-three/drei'
+import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { Group } from 'three'
@@ -165,6 +165,12 @@ function Buildings({ id }: { id: number }) {
     )
   })
   return <>{houses}</>
+}
+
+// Per-token mascot emoji shown on a billboard above each piece so the player
+// can identify their mascot at a glance from any camera angle.
+const TOKEN_MASCOT_EMOJI: Record<string, string> = {
+  maiz: '🌽', cafe: '☕', vaca: '🐄', tractor: '🚜', milpa: '🌿', pez: '🐟',
 }
 
 // ─── Token shapes per tokenId ──────────────────────────────────────────────
@@ -382,6 +388,30 @@ function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
       <mesh castShadow position={[0, 0.14, 0]}>
         <TokenShape tokenId={player.tokenId} color={color} />
       </mesh>
+      {/* Mascot emoji badge above the piece — HTML overlay so OS emoji renders */}
+      <Html
+        position={[0, 0.55, 0]}
+        center
+        distanceFactor={6}
+        zIndexRange={[10, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '38px', height: '38px',
+            background: '#FDF8EE',
+            border: `2px solid ${color}`,
+            borderRadius: '50%',
+            boxShadow: `0 2px 6px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.3)`,
+            fontSize: '22px', lineHeight: 1,
+            userSelect: 'none',
+          }}
+          title={player.name}
+        >
+          {TOKEN_MASCOT_EMOJI[player.tokenId] ?? '🌱'}
+        </div>
+      </Html>
       {/* Active glow ring */}
       {isActive && (
         <mesh position={[0, -0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
