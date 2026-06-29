@@ -55,3 +55,10 @@ export function useActiveSetMoving() {
   // In multi we don't have an animation lock to gate UI on
   return mode === 'multi' ? (_: boolean) => {} : solo
 }
+
+export function useActiveLastDice(): { d1: number; d2: number; doubles: boolean } | null {
+  const mode  = useGameMode()
+  const solo  = useGameStore(s => s.lastDice)
+  const multi = useMultiplayerStore(s => s.lastDice)
+  return mode === 'multi' ? multi : solo
+}

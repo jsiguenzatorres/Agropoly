@@ -6,7 +6,7 @@ import type { Group } from 'three'
 import { BOARD_DATA } from '@agropoly/game-engine'
 import {
   useActiveGame, useActiveBoardSpace, useActivePlayers,
-  useActiveCurrentIdx, useActiveGameId, useActiveSetMoving,
+  useActiveCurrentIdx, useActiveGameId, useActiveSetMoving, useActiveLastDice,
 } from '../../store/GameModeContext'
 import { getBoardPosition, getBoardSide, getTokenOffset } from '../../lib/board-positions'
 import { sfx } from '../../lib/sfx'
@@ -287,11 +287,17 @@ function computeSteps(from: number, to: number): number[] {
 
 const STEP_INTERVAL = 0.13  // seconds per space
 
+// Wait for the Rapier dice overlay to settle before the token starts walking
+// when the position change was caused by a dice roll. Card-driven teleports
+// (move_to, go_to_jail) skip this wait because lastDice didn't change.
+const DICE_SETTLE_MS = 2000
+
 function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
   const game      = useActiveGame()
   const gameId    = useActiveGameId()
   const setMoving = useActiveSetMoving()
   const curIdx    = useActiveCurrentIdx()
+  const lastDice  = useActiveLastDice()
 
   const player = game?.players[playerIndex]
 
@@ -301,11 +307,15 @@ function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
   const lastTarget = useRef(player?.position ?? 0)
   const groupRef   = useRef<Group>(null)
   const bobTimer   = useRef(0)
+  const lastDiceRef = useRef<string | null>(null)
 
   // Reset visual pos when new game starts
-  useEffect(() => { setVisualPos(0); stepQueue.current = []; lastTarget.current = 0 }, [gameId])
+  useEffect(() => {
+    setVisualPos(0); stepQueue.current = []; lastTarget.current = 0; lastDiceRef.current = null
+  }, [gameId])
 
-  // Queue steps when game position changes
+  // Queue steps when game position changes. When the change coincides with a
+  // brand-new dice roll, delay the start so the Rapier dice can settle first.
   useEffect(() => {
     if (!player) return
     const to = player.position
@@ -313,10 +323,19 @@ function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
     const steps = computeSteps(lastTarget.current, to)
     lastTarget.current = to
     if (steps.length === 0) return
-    stepQueue.current = steps
-    stepTimer.current = 0
+
+    const diceKey = lastDice ? `${lastDice.d1}-${lastDice.d2}` : null
+    const diceJustRolled = diceKey !== null && diceKey !== lastDiceRef.current
+    lastDiceRef.current = diceKey
+    const delay = diceJustRolled ? DICE_SETTLE_MS : 0
+
     setMoving(true)
-  }, [player?.position])
+    const t = setTimeout(() => {
+      stepQueue.current = steps
+      stepTimer.current = 0
+    }, delay)
+    return () => clearTimeout(t)
+  }, [player?.position]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useFrame((_, delta) => {
     if (!groupRef.current || !player) return
