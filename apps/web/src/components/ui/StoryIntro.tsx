@@ -10,7 +10,7 @@ import type { Player } from '@agropoly/game-engine'
 import { mascotForToken } from '../../lib/mascot-dialogues'
 import { aspirationFor, TOKEN_EMOJI, TOKEN_NICKNAME } from '../../lib/intro-script'
 import { sfx } from '../../lib/sfx'
-import { speak, hasSpanishVoice } from '../../lib/speech'
+import { speak, hasSpanishVoice, stopSpeech } from '../../lib/speech'
 import { BillStack } from './BillFomento'
 
 const KEYFRAMES = `
@@ -51,10 +51,14 @@ type Scene =
   | { kind: 'player'; player: Player; aspiration: string }
   | { kind: 'final' }
 
+// Player scene is the longest because the narrator says:
+// "<name>, <nickname>. Crédito BFA: <balance> fomentos." — ~4s at rate 1.0.
+// We give it 6s so the narration finishes naturally before the next scene starts
+// (the next scene's speak() would otherwise cancel the previous utterance mid-word).
 const SCENE_DURATION: Record<Scene['kind'], number> = {
-  title:  3000,
-  player: 4500,
-  final:  2500,
+  title:  3500,
+  player: 6000,
+  final:  3000,
 }
 
 export function StoryIntro({ players, onDone }: Props) {
@@ -87,9 +91,14 @@ export function StoryIntro({ players, onDone }: Props) {
   }, [idx, scene, scenes.length, onDone])
 
   const skip = () => {
+    stopSpeech()         // silence narration immediately on skip
     setExiting(true)
     setTimeout(onDone, 350)
   }
+
+  // Cancel any pending narration when the whole intro unmounts (e.g. component
+  // disappears because onDone navigated away)
+  useEffect(() => () => stopSpeech(), [])
 
   if (!scene) return null
 
