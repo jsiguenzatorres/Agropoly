@@ -388,26 +388,38 @@ function AnimatedPlayerToken({ playerIndex }: { playerIndex: number }) {
       <mesh castShadow position={[0, 0.14, 0]}>
         <TokenShape tokenId={player.tokenId} color={color} />
       </mesh>
-      {/* Mascot emoji badge above the piece — HTML overlay so OS emoji renders */}
+      {/* Mascot emoji badge above the piece — HTML overlay so OS emoji renders.
+          The active player's badge is larger, gold-ringed and pulses so it's
+          immediately obvious whose turn it is. */}
       <Html
-        position={[0, 0.55, 0]}
+        position={[0, isActive ? 0.7 : 0.55, 0]}
         center
         distanceFactor={6}
         zIndexRange={[10, 0]}
         style={{ pointerEvents: 'none' }}
       >
+        <style>{`@keyframes token-badge-pulse {
+          0%, 100% { transform: scale(1);    box-shadow: 0 0 0 3px rgba(245,197,24,0.55), 0 0 18px 4px rgba(245,197,24,0.55), 0 2px 6px rgba(0,0,0,0.4); }
+          50%      { transform: scale(1.08); box-shadow: 0 0 0 5px rgba(245,197,24,0.75), 0 0 26px 8px rgba(245,197,24,0.7),  0 2px 6px rgba(0,0,0,0.4); }
+        }`}</style>
         <div
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '38px', height: '38px',
+            width:  isActive ? '50px' : '38px',
+            height: isActive ? '50px' : '38px',
             background: '#FDF8EE',
-            border: `2px solid ${color}`,
+            border: isActive ? '3px solid #F5C518' : `2px solid ${color}`,
             borderRadius: '50%',
-            boxShadow: `0 2px 6px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.3)`,
-            fontSize: '22px', lineHeight: 1,
+            boxShadow: isActive
+              ? '0 0 0 3px rgba(245,197,24,0.55), 0 0 18px 4px rgba(245,197,24,0.55), 0 2px 6px rgba(0,0,0,0.4)'
+              : '0 2px 6px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.3)',
+            fontSize: isActive ? '30px' : '22px',
+            lineHeight: 1,
             userSelect: 'none',
+            animation: isActive ? 'token-badge-pulse 1.6s ease-in-out infinite' : 'none',
+            transition: 'width 0.25s ease, height 0.25s ease, font-size 0.25s ease',
           }}
-          title={player.name}
+          title={player.name + (isActive ? ' · turno' : '')}
         >
           {TOKEN_MASCOT_EMOJI[player.tokenId] ?? '🌱'}
         </div>
