@@ -4,12 +4,14 @@
 //
 // Auto-advances through scenes; skip button bottom-right closes it immediately.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import gsap from 'gsap'
 import type { Player } from '@agropoly/game-engine'
 import { mascotForToken } from '../../lib/mascot-dialogues'
 import { aspirationFor, TOKEN_EMOJI, TOKEN_NICKNAME } from '../../lib/intro-script'
 import { sfx } from '../../lib/sfx'
 import { speak, hasSpanishVoice } from '../../lib/speech'
+import { BillStack } from './BillFomento'
 
 const KEYFRAMES = `
 @keyframes intro-fade-in   { from { opacity: 0; } to { opacity: 1; } }
@@ -180,13 +182,24 @@ function AmbientGoldDots() {
 }
 
 function TitleScene() {
+  const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     speak('AGROPOLY BFA. El sueño productivo de El Salvador.', { rate: 0.95 })
     try { sfx.win() } catch { /* user gesture needed first */ }
+    // GSAP timeline — pro easing + coordinated reveal
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+      tl.from('[data-anim="logo"]',    { y: -40, opacity: 0, scale: 0.7,  duration: 0.9, ease: 'back.out(1.7)' })
+        .from('[data-anim="caption"]', { y: 10,  opacity: 0,              duration: 0.5 }, '-=0.35')
+        .from('[data-anim="title"]',   { y: 30,  opacity: 0, scale: 0.85, duration: 1.0, ease: 'expo.out' }, '-=0.2')
+        .from('[data-anim="tagline"]', { y: 16,  opacity: 0,              duration: 0.6 }, '-=0.4')
+    }, rootRef)
+    return () => ctx.revert()
   }, [])
   return (
-    <div style={{ textAlign: 'center', animation: 'intro-fade-in 0.6s ease' }}>
+    <div ref={rootRef} style={{ textAlign: 'center' }}>
       <img
+        data-anim="logo"
         src="/logo-bfa.png"
         alt="Banco de Fomento Agropecuario"
         style={{
@@ -196,7 +209,7 @@ function TitleScene() {
           filter: 'drop-shadow(0 6px 20px rgba(245,197,24,0.3))',
         }}
       />
-      <p style={{
+      <p data-anim="caption" style={{
         color: 'rgba(245,232,200,0.55)',
         fontSize: '11px',
         fontFamily: 'monospace',
@@ -205,7 +218,7 @@ function TitleScene() {
       }}>
         EST. 1973 · EL SALVADOR
       </p>
-      <h1 style={{
+      <h1 data-anim="title" style={{
         color: '#F5C518',
         fontFamily: 'Cinzel Decorative, Playfair Display, Georgia, serif',
         fontWeight: 900,
@@ -216,7 +229,7 @@ function TitleScene() {
       }}>
         AGROPOLY
       </h1>
-      <p style={{
+      <p data-anim="tagline" style={{
         color: '#FDF8EE',
         fontFamily: 'Playfair Display, Georgia, serif',
         fontStyle: 'italic',
@@ -308,13 +321,14 @@ function PlayerScene({ scene }: { scene: Extract<Scene, { kind: 'player' }> }) {
         💵
       </div>
 
-      {/* Credit amount */}
+      {/* Credit amount + bill stack */}
       <div style={{
         marginTop: '10px',
         background: 'rgba(13,43,20,0.85)',
         border: '2px dashed rgba(245,197,24,0.55)',
         borderRadius: '12px',
         padding: '12px 26px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
         animation: 'intro-aspiration-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) 1.6s both',
       }}>
         <p style={{
@@ -325,11 +339,12 @@ function PlayerScene({ scene }: { scene: Extract<Scene, { kind: 'player' }> }) {
         </p>
         <p style={{
           color: '#F5C518', fontWeight: 800,
-          fontSize: '40px', fontFamily: 'Playfair Display, Georgia, serif',
-          margin: '2px 0 0', lineHeight: 1,
+          fontSize: '34px', fontFamily: 'Playfair Display, Georgia, serif',
+          margin: 0, lineHeight: 1,
         }}>
           ƒ{player.balance.toLocaleString()}
         </p>
+        <BillStack amount={player.balance} size="sm" maxBills={4} />
       </div>
 
       {/* Aspiration */}
@@ -355,13 +370,20 @@ function PlayerScene({ scene }: { scene: Extract<Scene, { kind: 'player' }> }) {
 }
 
 function FinalScene() {
+  const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     speak('¡Que comience la partida!', { rate: 1.0, pitch: 1.15 })
     try { sfx.win() } catch { /* user gesture */ }
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+      tl.from('[data-anim="title-final"]',   { scale: 0.5, opacity: 0, duration: 0.7, ease: 'back.out(1.8)' })
+        .from('[data-anim="tagline-final"]', { y: 14,      opacity: 0, duration: 0.5 }, '-=0.25')
+    }, rootRef)
+    return () => ctx.revert()
   }, [])
   return (
-    <div style={{ textAlign: 'center' }}>
-      <p style={{
+    <div ref={rootRef} style={{ textAlign: 'center' }}>
+      <p data-anim="title-final" style={{
         color: '#F5C518',
         fontFamily: 'Cinzel Decorative, Playfair Display, Georgia, serif',
         fontWeight: 900,
@@ -372,7 +394,7 @@ function FinalScene() {
       }}>
         ¡QUE COMIENCE LA PARTIDA!
       </p>
-      <p style={{
+      <p data-anim="tagline-final" style={{
         color: '#FDF8EE',
         fontFamily: 'monospace',
         fontSize: '13px',

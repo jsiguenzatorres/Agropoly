@@ -22,6 +22,7 @@ import { PropertyInspector } from '../components/ui/PropertyInspector'
 import { Celebrations } from '../components/ui/Celebrations'
 import { ClimateDieRoll } from '../components/ui/ClimateDieRoll'
 import { StoryIntro } from '../components/ui/StoryIntro'
+import { DiceRoll3D } from '../components/ui/DiceRoll3D'
 
 const GameScene = lazy(() => import('../components/three/GameScene'))
 
@@ -102,6 +103,21 @@ export function Component() {
     }
   }, [game, soloGameId, mode])
 
+  // Physics-based dice roll overlay — fire on each new lastDice value
+  const lastDice = useGameStore(s => s.lastDice)
+  const multiLastDice = useMultiplayerStore(s => s.lastDice)
+  const dice = mode === 'multi' ? multiLastDice : lastDice
+  const lastDiceKey = useRef<string>('')
+  const [activeRoll, setActiveRoll] = useState<{ d1: number; d2: number; key: string } | null>(null)
+  useEffect(() => {
+    if (!dice) return
+    const key = `${dice.d1}-${dice.d2}-${Date.now()}`
+    if (lastDiceKey.current === '' || lastDiceKey.current.split('-').slice(0, 2).join('-') !== `${dice.d1}-${dice.d2}`) {
+      lastDiceKey.current = key
+      setActiveRoll({ d1: dice.d1, d2: dice.d2, key })
+    }
+  }, [dice?.d1, dice?.d2]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!game) return <LoadingBoard />
 
   return (
@@ -132,6 +148,14 @@ export function Component() {
         <PropertyInspector mode={mode} />
         <Celebrations mode={mode} />
         <ClimateDieRoll mode={mode} />
+        {activeRoll && (
+          <DiceRoll3D
+            key={activeRoll.key}
+            d1={activeRoll.d1}
+            d2={activeRoll.d2}
+            onDone={() => setActiveRoll(null)}
+          />
+        )}
         <VictoryScreen mode={mode} />
       </div>
     </GameModeProvider>
